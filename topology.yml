@@ -21,6 +21,11 @@ hosts:
       image: kali
       mgmt_user: debian
     flavor: standard.kali
+  - name: checker
+    base_box:
+      image: debian-12-x86_64
+      mgmt_user: debian
+    flavor: standard.small
 
 routers:
   - name: gateway
@@ -51,6 +56,9 @@ net_mappings:
   - host: team04
     network: lab-lan
     ip: 10.80.0.14
+  - host: checker
+    network: lab-lan
+    ip: 10.80.0.30
 
 router_mappings:
   - router: gateway
@@ -64,3 +72,6 @@ groups:
       - team02
       - team03
       - team04
+  - name: infra
+    nodes:
+      - checker

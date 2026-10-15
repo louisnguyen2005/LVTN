@@ -72,11 +72,64 @@ class ProvisioningTests(unittest.TestCase):
         self.assertIn("team_secrets[inventory_hostname].password", playbook)
         self.assertIn('--host 0.0.0.0 --port 80', unit)
         self.assertIn('AmbientCapabilities=CAP_NET_BIND_SERVICE', unit)
+        # Shared per-team Kali login (teamNN / teamNN) with sudo for patching.
+        self.assertIn("name: '{{ inventory_hostname }}'", playbook)
+        self.assertIn("inventory_hostname | password_hash('sha512')", playbook)
+        self.assertIn('groups: sudo', playbook)
         # The obsolete central-server pieces must be gone.
         for gone in ['server-acl.nft', 'attacker-http', 'servicedesk.service', 'ip_forward']:
             self.assertNotIn(gone, playbook)
         self.assertFalse((ROOT / 'provisioning/files/server-acl.nft').exists())
         self.assertFalse((ROOT / 'app/attacker_http.py').exists())
+
+    def test_checker_server_is_provisioned(self):
+        playbook = (ROOT / 'provisioning/playbook.yml').read_text(encoding='utf-8')
+        unit = (ROOT / 'provisioning/files/mekodata-checker.service').read_text(encoding='utf-8')
+        self.assertIn('hosts: infra', playbook)
+        self.assertIn('checker.py', playbook)
+        self.assertIn('dict(flags=team_flags)', playbook)
+        self.assertIn('checker.py --config', unit)
+        # SSH is explicitly started so the console tunnel stays open.
+        self.assertIn('name: ssh', playbook)
+        self.assertIn('state: started', playbook)
+
+
+class CheckerAppTests(unittest.TestCase):
+    def load_checker(self):
+        source = ROOT / 'app/checker.py'
+        spec = importlib.util.spec_from_file_location('checker', source)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def call(self, app, query):
+        env = {'PATH_INFO': '/validate', 'REQUEST_METHOD': 'GET', 'QUERY_STRING': query}
+        result = {}
+        body = b''.join(app(env, lambda status, headers: result.update(status=int(status.split()[0]))))
+        return result['status'], json.loads(body)
+
+    def test_validate_accepts_only_correct_flags(self):
+        module = self.load_checker()
+        app = module.create_app({'team01': 'MeKoDataCTF{team01_9f3a7c21}',
+                                 'team02': 'MeKoDataCTF{team02_4d8e2b6f}'})
+        status, ok = self.call(app, 'flag=MeKoDataCTF{team01_9f3a7c21}')
+        self.assertEqual(status, 200)
+        self.assertEqual((ok['valid'], ok['team']), (True, 'team01'))
+        _, wrong_team = self.call(app, 'team=team02&flag=MeKoDataCTF{team01_9f3a7c21}')
+        self.assertFalse(wrong_team['valid'])
+        _, bad = self.call(app, 'flag=MeKoDataCTF{nope}')
+        self.assertEqual((bad['valid'], bad['team']), (False, None))
+
+    def test_health_lists_teams_and_empty_flags_rejected(self):
+        module = self.load_checker()
+        app = module.create_app({'team01': 'MeKoDataCTF{team01_9f3a7c21}'})
+        env = {'PATH_INFO': '/health', 'REQUEST_METHOD': 'GET'}
+        result = {}
+        body = b''.join(app(env, lambda status, headers: result.update(status=int(status.split()[0]))))
+        self.assertEqual(result['status'], 200)
+        self.assertEqual(json.loads(body)['teams'], ['team01'])
+        with self.assertRaises(ValueError):
+            module.create_app({})
 
 
 if __name__ == '__main__':

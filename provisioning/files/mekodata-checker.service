@@ -1,0 +1,20 @@
+[Unit]
+Description=MeKoData CTF flag validator (scaffold)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=mekodata-checker
+Group=mekodata-checker
+WorkingDirectory=/opt/mekodata-checker
+ExecStart=/usr/bin/python3 /opt/mekodata-checker/checker.py --config /etc/mekodata-checker/config.json --host 0.0.0.0 --port 8080
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

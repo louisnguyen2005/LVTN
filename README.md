@@ -8,9 +8,15 @@ One CyberRangeCZ Sandbox Definition. Create **one pool of size 1** from this rep
 | team02 | `10.80.0.12` | `http://10.80.0.12/` | `MeKoDataCTF{team02_…}` |
 | team03 | `10.80.0.13` | `http://10.80.0.13/` | `MeKoDataCTF{team03_…}` |
 | team04 | `10.80.0.14` | `http://10.80.0.14/` | `MeKoDataCTF{team04_…}` |
+| checker | `10.80.0.30` | `http://10.80.0.30:8080/` | flag validator (scaffold) |
 | gateway | `10.80.0.1` | Routing only | — |
 
-**Credentials.** Each team VM uses one password for both the web portal (`student / teamNN_mekodatactf_2026_test1`) and the Kali console (`user-access / teamNN_mekodatactf_2026_test1`). Example for team01: `team01_mekodatactf_2026_test1`. Passwords and flags live in `provisioning/group_vars/all.yml` (`team_secrets`) — replace them before any real event.
+**Credentials.**
+
+- **Kali login (SSH/console), shared by the 4 team members:** `teamNN / teamNN` — e.g. `team01 / team01`. This account has `sudo` so the team can patch and redeploy. The platform `user-access` account also stays for the GUI tunnel.
+- **Web portal login:** `student / teamNN_mekodatactf_2026_test1` — e.g. `team01_mekodatactf_2026_test1`.
+
+Passwords and flags live in `provisioning/group_vars/all.yml` (`team_secrets`, `team_flags`) — replace them before any real event.
 
 ## The vulnerability and the flag chain
 
@@ -24,6 +30,18 @@ Four steps to the flag:
 4. point.js documents an audit range at `record_id` 9000+. `GET /api/scores/9001` returns a `remark` field containing `MeKoDataCTF{teamNN_xxxxxxxx}`.
 
 The fixed build (`lab_enforce_owner: true`) adds the ownership check and returns `403` for peer and audit records.
+
+## Checker / flag-validator server
+
+A separate Debian host `checker` (`10.80.0.30`) runs a small flag-validator scaffold on port 8080, so you can grow a scoreboard/checker later without changing the topology:
+
+```
+GET http://10.80.0.30:8080/health
+GET http://10.80.0.30:8080/validate?team=team01&flag=MeKoDataCTF{team01_9f3a7c21}
+    -> {"valid": true, "team": "team01"}
+```
+
+Known flags come from `team_flags` in `provisioning/group_vars/all.yml` (keep it in sync with `team_secrets[*].flag`). Replace `app/checker.py` with your real checker; the service unit and `/etc/mekodata-checker/config.json` path stay the same.
 
 ## Deploy
 

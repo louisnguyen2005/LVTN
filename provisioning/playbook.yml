@@ -10,7 +10,6 @@
           - global_sandbox_id is defined
           - global_sandbox_id | length == 36
           - inventory_hostname in lab_hosts
-          - inventory_hostname in team_secrets
     - name: Store sandbox and host identity
       ansible.builtin.copy:
         dest: /etc/idor-lab-identity.json
@@ -31,11 +30,12 @@
     user_access_sudo: false
     user_access_ssh_public_key: '{{ global_ssh_public_user_key }}'
   pre_tasks:
-    - name: Require the platform-provided trainee public key
+    - name: Require the platform-provided trainee public key and this team's secret
       ansible.builtin.assert:
         that:
           - global_ssh_public_user_key is defined
           - global_ssh_public_user_key | length > 0
+          - inventory_hostname in team_secrets
 
     - name: Install runtime, access and HTTP tools
       ansible.builtin.apt:
@@ -62,7 +62,7 @@
         group: root
         mode: '0644'
         content: |
-          Match User user-access
+          Match User user-access,{{ inventory_hostname }}
               PasswordAuthentication yes
               PubkeyAuthentication yes
               AuthenticationMethods any
@@ -76,6 +76,25 @@
         shell: /bin/bash
         expires: -1
         password_expire_max: -1
+
+    - name: Create the shared team login for the 4 members (teamNN / teamNN)
+      ansible.builtin.user:
+        name: '{{ inventory_hostname }}'
+        password: "{{ inventory_hostname | password_hash('sha512') }}"
+        update_password: always
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        create_home: true
+        expires: -1
+        password_expire_max: -1
+      no_log: true
+
+    - name: Ensure SSH is enabled and running (keeps the console tunnel open)
+      ansible.builtin.service:
+        name: ssh
+        enabled: true
+        state: started
 
     - name: Create the portal system user
       ansible.builtin.user:
@@ -151,7 +170,8 @@
           Team 02: http://10.80.0.12/
           Team 03: http://10.80.0.13/
           Team 04: http://10.80.0.14/
-          Portal login: student / <your team password>
+          Kali SSH/console login (shared by the 4 members): {{ inventory_hostname }} / {{ inventory_hostname }}
+          Portal login (web): student / {{ inventory_hostname }}_mekodatactf_2026_test1
           Each team's portal hides its own MeKoDataCTF{...} flag behind the IDOR.
 
     - ansible.builtin.meta: flush_handlers
@@ -218,3 +238,86 @@
       failed_when: >-
         portal_pointjs.status != 200
         or '/api/scores/' not in portal_pointjs.content
+
+- name: Prepare the checker / flag-validator server
+  hosts: infra
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Install runtime tools
+      ansible.builtin.apt:
+        name: [python3, curl]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create the checker system user
+      ansible.builtin.user:
+        name: mekodata-checker
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Create checker directories
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: directory
+        owner: '{{ item.owner }}'
+        group: mekodata-checker
+        mode: '{{ item.mode }}'
+      loop:
+        - { path: /opt/mekodata-checker, owner: root, mode: '0750' }
+        - { path: /etc/mekodata-checker, owner: root, mode: '0750' }
+
+    - name: Install the flag-validator scaffold
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../app/checker.py'
+        dest: /opt/mekodata-checker/checker.py
+        owner: root
+        group: mekodata-checker
+        mode: '0640'
+      notify: Restart checker
+
+    - name: Store the known per-team flags for the validator
+      ansible.builtin.copy:
+        dest: /etc/mekodata-checker/config.json
+        owner: root
+        group: mekodata-checker
+        mode: '0640'
+        content: '{{ dict(flags=team_flags) | to_nice_json }}'
+      no_log: true
+      notify: Restart checker
+
+    - name: Install the checker service unit
+      ansible.builtin.copy:
+        src: mekodata-checker.service
+        dest: /etc/systemd/system/mekodata-checker.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart checker
+
+    - name: Start the flag validator
+      ansible.builtin.systemd_service:
+        name: mekodata-checker
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    - ansible.builtin.meta: flush_handlers
+
+    - name: Check the local validator health endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/health
+        use_proxy: false
+        return_content: true
+      register: checker_health
+      until: checker_health.status | default(0) == 200
+      retries: 10
+      delay: 3
+  handlers:
+    - name: Restart checker
+      ansible.builtin.systemd_service:
+        name: mekodata-checker
+        daemon_reload: true
+        state: restarted

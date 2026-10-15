@@ -11,12 +11,21 @@ lab_hosts:
   team02: 10.80.0.12
   team03: 10.80.0.13
   team04: 10.80.0.14
+  checker: 10.80.0.30
 
 lab_teams:
   team01: 10.80.0.11
   team02: 10.80.0.12
   team03: 10.80.0.13
   team04: 10.80.0.14
+
+# team -> flag, consumed by the checker/flag-validator on the `checker` server.
+# Keep in sync with team_secrets[*].flag below.
+team_flags:
+  team01: MeKoDataCTF{team01_9f3a7c21}
+  team02: MeKoDataCTF{team02_4d8e2b6f}
+  team03: MeKoDataCTF{team03_c1a05e94}
+  team04: MeKoDataCTF{team04_6b7fd310}
 
 team_secrets:
   team01:

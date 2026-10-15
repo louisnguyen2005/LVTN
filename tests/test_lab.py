@@ -158,21 +158,23 @@ class DefinitionTests(unittest.TestCase):
 
 
 class TopologyTests(unittest.TestCase):
-    def test_sandbox_has_four_team_kali_hosts(self):
+    def test_sandbox_has_four_team_kali_hosts_and_a_checker(self):
         source = ROOT / 'topology.yml'
         self.assertTrue(source.exists(), 'Isolated lab topology is required')
         topology = yaml.safe_load(source.read_text(encoding='utf-8'))
-        self.assertEqual({h['name'] for h in topology['hosts']},
-                         {'team01', 'team02', 'team03', 'team04'})
-        self.assertTrue(all(h['base_box']['image'] == 'kali' for h in topology['hosts']))
+        by_name = {h['name']: h for h in topology['hosts']}
+        self.assertEqual(set(by_name), {'team01', 'team02', 'team03', 'team04', 'checker'})
+        self.assertTrue(all(by_name[t]['base_box']['image'] == 'kali'
+                            for t in ['team01', 'team02', 'team03', 'team04']))
+        self.assertEqual(by_name['checker']['base_box']['image'], 'debian-12-x86_64')
         self.assertEqual(len(topology['networks']), 1)
         self.assertEqual(len(topology['routers']), 1)
-        self.assertEqual(len(topology['net_mappings']), 4)
-        self.assertEqual(topology['groups'], [
-            {'name': 'teams', 'nodes': ['team01', 'team02', 'team03', 'team04']}
-        ])
+        self.assertEqual(len(topology['net_mappings']), 5)
+        self.assertIn({'name': 'teams', 'nodes': ['team01', 'team02', 'team03', 'team04']},
+                      topology['groups'])
+        self.assertIn({'name': 'infra', 'nodes': ['checker']}, topology['groups'])
         self.assertEqual({m['ip'] for m in topology['net_mappings']},
-                         {'10.80.0.11', '10.80.0.12', '10.80.0.13', '10.80.0.14'})
+                         {'10.80.0.11', '10.80.0.12', '10.80.0.13', '10.80.0.14', '10.80.0.30'})
         self.assertEqual(topology['router_mappings'][0]['ip'], '10.80.0.1')
 
     def test_group_vars_define_per_team_password_and_flag(self):
@@ -182,6 +184,9 @@ class TopologyTests(unittest.TestCase):
             self.assertEqual(secret['password'], f'{team}_mekodatactf_2026_test1')
             self.assertTrue(secret['flag'].startswith('MeKoDataCTF{' + team + '_'))
             self.assertTrue(secret['flag'].endswith('}'))
+        # team_flags (consumed by the checker) must match team_secrets.
+        self.assertEqual(data['team_flags'],
+                         {t: s['flag'] for t, s in data['team_secrets'].items()})
 
 
 if __name__ == '__main__':
