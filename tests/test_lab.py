@@ -180,10 +180,17 @@ class TopologyTests(unittest.TestCase):
     def test_group_vars_define_per_team_password_and_flag(self):
         data = yaml.safe_load((ROOT / 'provisioning/group_vars/all.yml').read_text(encoding='utf-8'))
         self.assertEqual(set(data['team_secrets']), {'team01', 'team02', 'team03', 'team04'})
+        ssh_passwords = set()
         for team, secret in data['team_secrets'].items():
             self.assertEqual(secret['password'], f'{team}_mekodatactf_2026_test1')
             self.assertTrue(secret['flag'].startswith('MeKoDataCTF{' + team + '_'))
             self.assertTrue(secret['flag'].endswith('}'))
+            # Kali SSH password must be distinct, non-trivial, and not the username.
+            self.assertIn('ssh_password', secret)
+            self.assertNotIn(secret['ssh_password'], (team, secret['password']))
+            self.assertGreaterEqual(len(secret['ssh_password']), 12)
+            ssh_passwords.add(secret['ssh_password'])
+        self.assertEqual(len(ssh_passwords), len(data['team_secrets']))
         # team_flags (consumed by the checker) must match team_secrets.
         self.assertEqual(data['team_flags'],
                          {t: s['flag'] for t, s in data['team_secrets'].items()})

@@ -62,10 +62,15 @@
         group: root
         mode: '0644'
         content: |
-          Match User user-access,{{ inventory_hostname }}
+          Match User user-access
               PasswordAuthentication yes
               PubkeyAuthentication yes
               AuthenticationMethods any
+              AllowTcpForwarding yes
+          Match User {{ inventory_hostname }}
+              PasswordAuthentication yes
+              PubkeyAuthentication no
+              AuthenticationMethods password
               AllowTcpForwarding yes
           Match all
       notify: Reload team SSH
@@ -77,10 +82,10 @@
         expires: -1
         password_expire_max: -1
 
-    - name: Create the shared team login for the 4 members (teamNN / teamNN)
+    - name: Create the shared team login for the 4 members (teamNN / distinct ssh_password)
       ansible.builtin.user:
         name: '{{ inventory_hostname }}'
-        password: "{{ inventory_hostname | password_hash('sha512') }}"
+        password: "{{ team_secrets[inventory_hostname].ssh_password | password_hash('sha512') }}"
         update_password: always
         shell: /bin/bash
         groups: sudo
@@ -170,7 +175,7 @@
           Team 02: http://10.80.0.12/
           Team 03: http://10.80.0.13/
           Team 04: http://10.80.0.14/
-          Kali SSH/console login (shared by the 4 members): {{ inventory_hostname }} / {{ inventory_hostname }}
+          Kali SSH/console login (shared by the 4 members): {{ inventory_hostname }} / (mat khau SSH rieng cua team, do ban to chuc phat)
           Portal login (web): student / {{ inventory_hostname }}_mekodatactf_2026_test1
           Each team's portal hides its own MeKoDataCTF{...} flag behind the IDOR.
 

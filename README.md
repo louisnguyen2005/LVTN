@@ -13,8 +13,10 @@ One CyberRangeCZ Sandbox Definition. Create **one pool of size 1** from this rep
 
 **Credentials.**
 
-- **Kali login (SSH/console), shared by the 4 team members:** `teamNN / teamNN` — e.g. `team01 / team01`. This account has `sudo` so the team can patch and redeploy. The platform `user-access` account also stays for the GUI tunnel.
+- **Kali login (SSH/console), shared by the 4 team members:** username `teamNN`, password = that team's **distinct** `ssh_password` in `team_secrets` (not the username, not the web password). This account has `sudo` so the team can patch and redeploy, and it is **password-only** (pubkey disabled) so a team cannot auto-SSH into another team's box. The platform `user-access` account stays for the GUI tunnel.
 - **Web portal login:** `student / teamNN_mekodatactf_2026_test1` — e.g. `team01_mekodatactf_2026_test1`.
+
+Distribute each team's `ssh_password` privately to that team only. Defaults ship as placeholders (`K4li@TeamNN-…`) — replace them before any real event.
 
 Passwords and flags live in `provisioning/group_vars/all.yml` (`team_secrets`, `team_flags`) — replace them before any real event.
 
