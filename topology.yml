@@ -1,0 +1,66 @@
+name: mekodata-idor-four-team-sandbox
+
+hosts:
+  - name: team01
+    base_box:
+      image: kali
+      mgmt_user: debian
+    flavor: standard.kali
+  - name: team02
+    base_box:
+      image: kali
+      mgmt_user: debian
+    flavor: standard.kali
+  - name: team03
+    base_box:
+      image: kali
+      mgmt_user: debian
+    flavor: standard.kali
+  - name: team04
+    base_box:
+      image: kali
+      mgmt_user: debian
+    flavor: standard.kali
+
+routers:
+  - name: gateway
+    base_box:
+      image: debian-12-x86_64
+      mgmt_user: debian
+    flavor: standard.small
+
+wan:
+  name: internet-connection
+  cidr: 100.100.100.0/24
+
+networks:
+  - name: lab-lan
+    cidr: 10.80.0.0/24
+    accessible_by_user: true
+
+net_mappings:
+  - host: team01
+    network: lab-lan
+    ip: 10.80.0.11
+  - host: team02
+    network: lab-lan
+    ip: 10.80.0.12
+  - host: team03
+    network: lab-lan
+    ip: 10.80.0.13
+  - host: team04
+    network: lab-lan
+    ip: 10.80.0.14
+
+router_mappings:
+  - router: gateway
+    network: lab-lan
+    ip: 10.80.0.1
+
+groups:
+  - name: teams
+    nodes:
+      - team01
+      - team02
+      - team03
+      - team04

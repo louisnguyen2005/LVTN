@@ -1,0 +1,220 @@
+---
+- name: Record the identity of every lab host
+  hosts: hosts
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Require the sandbox identity and expected host name
+      ansible.builtin.assert:
+        that:
+          - global_sandbox_id is defined
+          - global_sandbox_id | length == 36
+          - inventory_hostname in lab_hosts
+          - inventory_hostname in team_secrets
+    - name: Store sandbox and host identity
+      ansible.builtin.copy:
+        dest: /etc/idor-lab-identity.json
+        owner: root
+        group: root
+        mode: '0644'
+        content: '{{ dict(sandbox_uuid=global_sandbox_id, node=inventory_hostname) | to_nice_json }}'
+
+- name: Give each team its own Kali console and point-lookup IDOR portal
+  hosts: teams
+  become: true
+  gather_facts: true
+  vars:
+    team_password: '{{ team_secrets[inventory_hostname].password }}'
+    user_access_username: user-access
+    user_access_password: '{{ team_password }}'
+    user_access_shell: /bin/bash
+    user_access_sudo: false
+    user_access_ssh_public_key: '{{ global_ssh_public_user_key }}'
+  pre_tasks:
+    - name: Require the platform-provided trainee public key
+      ansible.builtin.assert:
+        that:
+          - global_ssh_public_user_key is defined
+          - global_ssh_public_user_key | length > 0
+
+    - name: Install runtime, access and HTTP tools
+      ansible.builtin.apt:
+        name: [python3, openssh-server, curl, iputils-ping]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+  roles:
+    - role: user-access
+      no_log: true
+  tasks:
+    - name: Load SSH drop-ins before image defaults
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        line: 'Include /etc/ssh/sshd_config.d/*.conf'
+        insertbefore: BOF
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Reload team SSH
+
+    - name: Enable trainee console and SSH key access
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-idor-lab.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Match User user-access
+              PasswordAuthentication yes
+              PubkeyAuthentication yes
+              AuthenticationMethods any
+              AllowTcpForwarding yes
+          Match all
+      notify: Reload team SSH
+
+    - name: Keep the trainee account and shell usable
+      ansible.builtin.user:
+        name: user-access
+        shell: /bin/bash
+        expires: -1
+        password_expire_max: -1
+
+    - name: Create the portal system user
+      ansible.builtin.user:
+        name: free-lab-web
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Create portal directories
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: directory
+        owner: '{{ item.owner }}'
+        group: free-lab-web
+        mode: '{{ item.mode }}'
+      loop:
+        - { path: /opt/idor-free-lab, owner: root, mode: '0750' }
+        - { path: /etc/idor-free-lab, owner: root, mode: '0750' }
+        - { path: /var/lib/idor-free-lab, owner: free-lab-web, mode: '0700' }
+
+    - name: Install the point-lookup portal application
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../app/{{ item }}'
+        dest: '/opt/idor-free-lab/{{ item }}'
+        owner: root
+        group: free-lab-web
+        mode: '0640'
+      loop: [score_portal.py, score.html, point.js]
+      notify: Restart portal
+
+    - name: Store this team's portal configuration (password + flag)
+      ansible.builtin.copy:
+        dest: /etc/idor-free-lab/config.json
+        owner: root
+        group: free-lab-web
+        mode: '0640'
+        content: >-
+          {{ dict(database='/var/lib/idor-free-lab/scores.sqlite',
+          password=team_password,
+          sandbox_id=global_sandbox_id,
+          flag=team_secrets[inventory_hostname].flag,
+          student_id=team_secrets[inventory_hostname].student_id,
+          student_name=team_secrets[inventory_hostname].student_name,
+          enforce_owner=lab_enforce_owner | bool) | to_nice_json }}
+      no_log: true
+      notify: Restart portal
+
+    - name: Install the port 80 service unit
+      ansible.builtin.copy:
+        src: score-portal.service
+        dest: /etc/systemd/system/score-portal.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart portal
+
+    - name: Start the point-lookup portal
+      ansible.builtin.systemd_service:
+        name: score-portal
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    - name: Write the four lab URLs for the trainee
+      ansible.builtin.copy:
+        dest: /home/user-access/lab-addresses.txt
+        owner: user-access
+        group: user-access
+        mode: '0644'
+        content: |
+          This machine: {{ inventory_hostname }} ({{ lab_hosts[inventory_hostname] }})
+          Team 01: http://10.80.0.11/
+          Team 02: http://10.80.0.12/
+          Team 03: http://10.80.0.13/
+          Team 04: http://10.80.0.14/
+          Portal login: student / <your team password>
+          Each team's portal hides its own MeKoDataCTF{...} flag behind the IDOR.
+
+    - ansible.builtin.meta: flush_handlers
+
+    - name: Check the local portal health endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1/health
+        use_proxy: false
+        return_content: true
+      register: portal_local_health
+      until: portal_local_health.status | default(0) == 200
+      retries: 10
+      delay: 3
+
+    - name: Require the sandbox identity to match on the health endpoint
+      ansible.builtin.assert:
+        that:
+          - portal_local_health.json.sandbox == global_sandbox_id
+  handlers:
+    - name: Reload team SSH
+      ansible.builtin.service:
+        name: ssh
+        enabled: true
+        state: reloaded
+    - name: Restart portal
+      ansible.builtin.systemd_service:
+        name: score-portal
+        daemon_reload: true
+        state: restarted
+
+- name: Verify every team portal is reachable across the LAN
+  hosts: teams
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ping every team peer directly on the LAN
+      ansible.builtin.command:
+        argv: [ping, '-c', '1', '-W', '2', '{{ item.value }}']
+      loop: '{{ lab_teams | dict2items }}'
+      when: item.key != inventory_hostname
+      register: peer_ping
+      until: peer_ping.rc == 0
+      retries: 3
+      delay: 2
+      changed_when: false
+
+    - name: Open each team portal health endpoint
+      ansible.builtin.uri:
+        url: 'http://{{ item.value }}/health'
+        use_proxy: false
+        return_content: true
+      loop: '{{ lab_teams | dict2items }}'
+      register: portal_http_checks
+      until: portal_http_checks.status | default(0) == 200
+      retries: 3
+      delay: 2
+
+    - name: Require point.js to be served with its API map
+      ansible.builtin.uri:
+        url: 'http://{{ lab_hosts[inventory_hostname] }}/static/point.js'
+        use_proxy: false
+        return_content: true
+      register: portal_pointjs
+      failed_when: >-
+        portal_pointjs.status != 200
+        or '/api/scores/' not in portal_pointjs.content

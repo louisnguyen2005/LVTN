@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cổng tra cứu điểm • MeKoData</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#17243c;background:#f3f6fc}*{box-sizing:border-box}
+body{margin:0}header{background:#162a50;color:white;padding:24px max(24px,calc((100vw - 1080px)/2));display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{font-size:24px;font-weight:700}.tag{color:#b4c5e6;font-size:13px}main{max-width:1080px;margin:48px auto;padding:0 24px}
+.card{background:white;border:1px solid #dfe6f1;border-radius:16px;padding:28px;box-shadow:0 8px 28px #15254508}.login{max-width:440px;margin:auto}
+h1{margin:0 0 10px;font-size:30px}p{color:#596c87;line-height:1.65}label{display:block;margin:18px 0 7px;font-weight:600}
+input,select{width:100%;padding:12px;border:1px solid #c7d3e7;border-radius:8px;font:inherit}
+button{cursor:pointer;border:0;background:#285de0;color:white;padding:12px 20px;border-radius:8px;font:inherit;font-weight:600}button:disabled{opacity:.5;cursor:wait}
+.muted{background:#e8eefb;color:#244477}.row{display:flex;gap:16px;align-items:center;justify-content:space-between}.row h1{margin:0}
+table{width:100%;border-collapse:collapse;margin:22px 0}td,th{text-align:left;padding:15px;border-bottom:1px solid #e8edf5}.link{background:none;color:#285de0;padding:0;text-align:left}
+.status{font-size:13px;border-radius:20px;padding:5px 10px;background:#eef2fa}.detail{margin-top:24px}.notice{min-height:24px;color:#ad3344}pre{white-space:pre-wrap;word-break:break-word;background:#f5f7fb;padding:18px;border-radius:8px}
+[hidden]{display:none!important}@media(max-width:650px){header{padding:20px}.tag{display:none}main{margin:25px auto}th:nth-child(2),td:nth-child(2){max-width:140px}.card{padding:20px}.row{align-items:flex-start}}
+</style>
+</head>
+<body>
+<header><div class="brand">MeKoData • Tra cứu điểm</div><span class="tag">Cổng tra cứu kết quả học tập</span><button id="logout" class="muted" hidden>Đăng xuất</button></header>
+<main>
+<section id="login-card" class="card login"><h1>Đăng nhập sinh viên</h1><p>Đăng nhập để xem bảng điểm các môn của bạn.</p>
+<form id="login"><label for="username">Tài khoản</label><input id="username" name="username" autocomplete="username" required value="student">
+<label for="password">Mật khẩu</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+<p id="login-message" class="notice" role="status"></p><button type="submit">Đăng nhập</button></form></section>
+<section id="workspace" hidden>
+<div class="card"><div class="row"><div><h1>Bảng điểm của tôi</h1><p id="identity">Sinh viên: student</p></div><button id="refresh" class="muted">Làm mới</button></div>
+<table><thead><tr><th>Mã bản ghi</th><th>Môn học</th><th>Điểm</th></tr></thead><tbody id="scores"></tbody></table>
+<p id="workspace-message" class="notice" role="status"></p></div>
+<section id="detail" class="card detail" hidden><h2 id="score-title"></h2><pre id="score-content"></pre></section>
+</section>
+</main>
+<script src="/static/point.js"></script>
+</body></html>

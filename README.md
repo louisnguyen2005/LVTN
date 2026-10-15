@@ -1,0 +1,52 @@
+# MeKoData CTF — IDOR tra cứu điểm (four team boxes)
+
+One CyberRangeCZ Sandbox Definition. Create **one pool of size 1** from this repository root. The sandbox contains four Kali team VMs on a shared LAN plus a gateway router. **Each team VM self-hosts its own point-lookup (tra cứu điểm) web portal with a deliberate IDOR, and each hides its own flag.**
+
+| Node | IP | Portal | Flag |
+| --- | --- | --- | --- |
+| team01 | `10.80.0.11` | `http://10.80.0.11/` | `MeKoDataCTF{team01_…}` |
+| team02 | `10.80.0.12` | `http://10.80.0.12/` | `MeKoDataCTF{team02_…}` |
+| team03 | `10.80.0.13` | `http://10.80.0.13/` | `MeKoDataCTF{team03_…}` |
+| team04 | `10.80.0.14` | `http://10.80.0.14/` | `MeKoDataCTF{team04_…}` |
+| gateway | `10.80.0.1` | Routing only | — |
+
+**Credentials.** Each team VM uses one password for both the web portal (`student / teamNN_mekodatactf_2026_test1`) and the Kali console (`user-access / teamNN_mekodatactf_2026_test1`). Example for team01: `team01_mekodatactf_2026_test1`. Passwords and flags live in `provisioning/group_vars/all.yml` (`team_secrets`) — replace them before any real event.
+
+## The vulnerability and the flag chain
+
+The portal lets a student view their own score records. `GET /api/scores/<record_id>` performs **no owner authorization** (classic IDOR). The flag for each box sits in an internal teacher "audit" record that is never listed for the student, reachable only by changing the `record_id`.
+
+Four steps to the flag:
+
+1. Log in, then **refresh** — the browser loads `/static/point.js`. Read its API map and the internal notes.
+2. `GET /api/me` and `GET /api/scores` reveal your own `record_id`s (from 1001).
+3. Change the id in `GET /api/scores/<record_id>` — it returns other students' records (IDOR confirmed).
+4. point.js documents an audit range at `record_id` 9000+. `GET /api/scores/9001` returns a `remark` field containing `MeKoDataCTF{teamNN_xxxxxxxx}`.
+
+The fixed build (`lab_enforce_owner: true`) adds the ownership check and returns `403` for peer and audit records.
+
+## Deploy
+
+1. Put this directory at the root of a Git repository accessible to CyberRangeCZ. `topology.yml` and `provisioning/` must be at the repository root.
+2. Create one Sandbox Definition from that Git URL and revision. Create one pool with **size 1**, then Allocate it. The provisioning playbook configures all four team hosts and verifies each portal responds before it finishes.
+3. Import `training-definition.json`, review and release it, then create one cloud Training Instance and assign the pool.
+
+The `kali` image and `standard.kali` flavor in `topology.yml` must exist in your cloud. The platform runner needs Ansible, the `user-access` role, and `ansible.posix` from `provisioning/requirements.yml`. The four host IPs and gateway subnet must not conflict with the platform's management network.
+
+## Verify inside the sandbox
+
+On any team VM, the local portal must answer and serve its API map:
+
+```bash
+curl --noproxy '*' -fsS http://127.0.0.1/health
+curl --noproxy '*' -fsS http://127.0.0.1/static/point.js | grep /api/scores/
+```
+
+The four team portals are reachable across the LAN (`http://10.80.0.11/` … `http://10.80.0.14/`). HTTP uses port 80 without adding `:80` to the URL. A private `10.x.x.x` URL is accessible only from the lab network or an approved tunnel.
+
+## Local source checks
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m unittest discover -s tests -v
+```

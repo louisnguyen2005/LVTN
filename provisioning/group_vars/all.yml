@@ -1,0 +1,41 @@
+# Lab-only credentials and per-team secrets.
+# Replace before use outside an isolated training cloud.
+#
+# Each team VM uses ONE password (team_secrets[host].password) for BOTH the
+# point-lookup web portal login AND the Kali `user-access` console login, and
+# hides its own flag (team_secrets[host].flag) behind the IDOR.
+lab_enforce_owner: false
+
+lab_hosts:
+  team01: 10.80.0.11
+  team02: 10.80.0.12
+  team03: 10.80.0.13
+  team04: 10.80.0.14
+
+lab_teams:
+  team01: 10.80.0.11
+  team02: 10.80.0.12
+  team03: 10.80.0.13
+  team04: 10.80.0.14
+
+team_secrets:
+  team01:
+    password: team01_mekodatactf_2026_test1
+    flag: MeKoDataCTF{team01_9f3a7c21}
+    student_id: 20260101
+    student_name: Nguyen Van An
+  team02:
+    password: team02_mekodatactf_2026_test1
+    flag: MeKoDataCTF{team02_4d8e2b6f}
+    student_id: 20260201
+    student_name: Tran Gia Bao
+  team03:
+    password: team03_mekodatactf_2026_test1
+    flag: MeKoDataCTF{team03_c1a05e94}
+    student_id: 20260301
+    student_name: Le Minh Chau
+  team04:
+    password: team04_mekodatactf_2026_test1
+    flag: MeKoDataCTF{team04_6b7fd310}
+    student_id: 20260401
+    student_name: Pham Quoc Dat
