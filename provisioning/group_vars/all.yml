@@ -1,0 +1,26 @@
+# Lab-only credentials. Replace before use outside an isolated training cloud.
+#
+# SSH / console login for the trainee account (user-access) is PASSWORD ONLY and
+# differs per attacker VM, so a team that knows its own password cannot log into
+# another team's VM. SSH key login is disabled for this account (see playbook.yml).
+# The keys of lab_team_passwords must be exactly the attacker hosts in lab_attackers.
+lab_team_passwords:
+  attacker1: mekodatactf202001
+  attacker2: mekodatactf202002
+  attacker3: mekodatactf202003
+  attacker4: mekodatactf202004
+#
+# ServiceDesk web passwords are NOT set here: each VM gets its own random one
+# during provisioning (see "Generate a unique ServiceDesk password" in playbook.yml).
+lab_enforce_owner: false
+lab_hosts:
+  attacker1: 10.80.0.11
+  attacker2: 10.80.0.12
+  attacker3: 10.80.0.13
+  attacker4: 10.80.0.14
+  server: 10.80.0.20
+lab_attackers:
+  attacker1: 10.80.0.11
+  attacker2: 10.80.0.12
+  attacker3: 10.80.0.13
+  attacker4: 10.80.0.14

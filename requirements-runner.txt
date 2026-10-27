@@ -1,0 +1,2 @@
+ansible-core>=2.16,<2.21
+passlib==1.7.4

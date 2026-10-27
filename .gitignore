@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+.coverage
+checker/results/
+checker/credentials.json

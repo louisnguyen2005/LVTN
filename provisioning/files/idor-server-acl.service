@@ -1,0 +1,14 @@
+[Unit]
+Description=Block new attacker-to-server connections in the IDOR lab
+After=network-online.target nftables.service
+Wants=network-online.target
+Before=servicedesk.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /opt/idor-free-lab/apply_server_acl.py
+ExecReload=/usr/bin/python3 /opt/idor-free-lab/apply_server_acl.py
+
+[Install]
+WantedBy=multi-user.target

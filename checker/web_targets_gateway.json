@@ -1,0 +1,8 @@
+{
+  "targets": [
+    {"name": "team01", "url": "http://10.13.128.29:8011/health", "expected_sandbox_suffix": "-attacker1"},
+    {"name": "team02", "url": "http://10.13.128.29:8012/health", "expected_sandbox_suffix": "-attacker2"},
+    {"name": "team03", "url": "http://10.13.128.29:8013/health", "expected_sandbox_suffix": "-attacker3"},
+    {"name": "team04", "url": "http://10.13.128.29:8014/health", "expected_sandbox_suffix": "-attacker4"}
+  ]
+}

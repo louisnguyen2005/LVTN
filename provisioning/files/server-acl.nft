@@ -1,0 +1,6 @@
+table inet idor_server_acl {
+    chain input {
+        type filter hook input priority -10; policy accept;
+        ip saddr 10.80.0.0/24 ip daddr 10.80.0.20 ct state new drop
+    }
+}

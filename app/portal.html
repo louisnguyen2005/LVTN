@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ServiceDesk • Cổng hỗ trợ</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#17243c;background:#f3f6fc}*{box-sizing:border-box}
+body{margin:0}header{background:#162a50;color:white;padding:24px max(24px,calc((100vw - 1080px)/2));display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{font-size:24px;font-weight:700}.tag{color:#b4c5e6;font-size:13px}main{max-width:1080px;margin:48px auto;padding:0 24px}
+.card{background:white;border:1px solid #dfe6f1;border-radius:16px;padding:28px;box-shadow:0 8px 28px #15254508}.login{max-width:440px;margin:auto}
+h1{margin:0 0 10px;font-size:30px}p{color:#596c87;line-height:1.65}label{display:block;margin:18px 0 7px;font-weight:600}
+input,select{width:100%;padding:12px;border:1px solid #c7d3e7;border-radius:8px;font:inherit}
+button{cursor:pointer;border:0;background:#285de0;color:white;padding:12px 20px;border-radius:8px;font:inherit;font-weight:600}button:disabled{opacity:.5;cursor:wait}
+.muted{background:#e8eefb;color:#244477}.row{display:flex;gap:16px;align-items:center;justify-content:space-between}.row h1{margin:0}
+table{width:100%;border-collapse:collapse;margin:22px 0}td,th{text-align:left;padding:15px;border-bottom:1px solid #e8edf5}.link{background:none;color:#285de0;padding:0;text-align:left}
+.status{font-size:13px;border-radius:20px;padding:5px 10px;background:#eef2fa}.detail{margin-top:24px}.notice{min-height:24px;color:#ad3344}pre{white-space:pre-wrap;word-break:break-word;background:#f5f7fb;padding:18px;border-radius:8px}
+[hidden]{display:none!important}@media(max-width:650px){header{padding:20px}.tag{display:none}main{margin:25px auto}th:nth-child(2),td:nth-child(2){max-width:140px}.card{padding:20px}.row{align-items:flex-start}}
+</style>
+</head>
+<body>
+<header><div class="brand">ServiceDesk</div><span class="tag">Cổng quản lý yêu cầu hỗ trợ nội bộ</span><button id="logout" class="muted" hidden>Đăng xuất</button></header>
+<main>
+<section id="login-card" class="card login"><h1>Chào mừng trở lại</h1><p>Đăng nhập để theo dõi và cập nhật yêu cầu hỗ trợ của bạn.</p>
+<form id="login"><label for="username">Tài khoản</label><input id="username" name="username" autocomplete="username" required>
+<label for="password">Mật khẩu</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+<p id="login-message" class="notice" role="status"></p><button type="submit">Đăng nhập</button></form></section>
+<section id="workspace" hidden>
+<div class="card"><div class="row"><div><h1>Yêu cầu của tôi</h1><p id="identity">Tài khoản: alice</p></div><button id="refresh" class="muted">Làm mới</button></div>
+<table><thead><tr><th>Mã phiếu</th><th>Nội dung</th><th>Trạng thái</th></tr></thead><tbody id="tickets"></tbody></table>
+<p id="workspace-message" class="notice" role="status"></p></div>
+<section id="detail" class="card detail" hidden><h2 id="ticket-title"></h2><pre id="ticket-content"></pre>
+<form id="update"><label for="ticket-status">Trạng thái yêu cầu</label><select id="ticket-status" name="status"><option value="open">Đang mở</option><option value="closed">Đã đóng</option></select><p></p><button>Cập nhật trạng thái</button></form></section>
+</section>
+</main>
+<script>
+const el = id => document.getElementById(id);
+let selectedId;
+async function request(path, body) {
+  const options = body ? {method:'POST',body:new URLSearchParams(body)} : {};
+  const response = await fetch(path, options);
+  const data = await response.json();
+  if (!response.ok) {if(response.status===401) showLogin();throw new Error(data.error || 'Không thể hoàn thành yêu cầu');}
+  return data;
+}
+function showLogin(){el('login-card').hidden=false;el('workspace').hidden=true;el('logout').hidden=true;el('detail').hidden=true;selectedId=undefined;}
+async function openTicket(id){try{const ticket=await request('/api/tickets/'+id);selectedId=id;el('detail').hidden=false;el('ticket-title').textContent=ticket.title;el('ticket-content').textContent=JSON.stringify(ticket,null,2);el('ticket-status').value=ticket.status;}catch(error){el('workspace-message').textContent=error.message;}}
+async function refresh(){const tickets=await request('/api/tickets');el('login-card').hidden=true;el('workspace').hidden=false;el('logout').hidden=false;el('tickets').replaceChildren();el('workspace-message').textContent='';for(const ticket of tickets){const row=document.createElement('tr');const id=document.createElement('td');const title=document.createElement('td');const status=document.createElement('td');const button=document.createElement('button');button.type='button';button.className='link';button.textContent='#'+ticket.id;button.onclick=()=>openTicket(ticket.id);id.append(button);title.textContent=ticket.title;status.textContent=ticket.status;row.append(id,title,status);el('tickets').append(row);}}
+el('login').onsubmit=async event=>{event.preventDefault();el('login-message').textContent='';try{await request('/login',new FormData(event.target));event.target.reset();await refresh();}catch(error){el('login-message').textContent=error.message;}};
+el('logout').onclick=async()=>{try{await request('/logout',{});showLogin();}catch(error){el('workspace-message').textContent=error.message;}};
+el('refresh').onclick=()=>refresh().catch(error=>el('workspace-message').textContent=error.message);
+el('update').onsubmit=async event=>{event.preventDefault();try{await request('/api/tickets/'+selectedId,new FormData(event.target));await refresh();await openTicket(selectedId);}catch(error){el('workspace-message').textContent=error.message;}};
+refresh().catch(()=>{});
+</script>
+</body></html>

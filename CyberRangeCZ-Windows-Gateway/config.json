@@ -1,0 +1,49 @@
+{
+  "gatewayIp": "10.13.128.29",
+  "sshConfig": "%USERPROFILE%\\.ssh\\pool-id-96-sandbox-id-8aec30a6-4bca-4e2f-9f07-536622b1c6f6-user-config",
+  "sshHost": "man",
+  "allowedClientSubnets": [
+    "0.0.0.0/0"
+  ],
+  "maxRestartAttempts": 5,
+  "restartDelaySeconds": 5,
+  "healthCheckIntervalSeconds": 15,
+  "startupTimeoutSeconds": 15,
+  "services": [
+    {
+      "name": "IDOR ServiceDesk (from topology.yml)",
+      "protocol": "http",
+      "gatewayPort": 8080,
+      "sandboxIp": "10.80.0.20",
+      "sandboxPort": 80
+    },
+    {
+      "name": "attacker1 ServiceDesk",
+      "protocol": "http",
+      "gatewayPort": 8011,
+      "sandboxIp": "10.80.0.11",
+      "sandboxPort": 8080
+    },
+    {
+      "name": "attacker2 ServiceDesk",
+      "protocol": "http",
+      "gatewayPort": 8012,
+      "sandboxIp": "10.80.0.12",
+      "sandboxPort": 8080
+    },
+    {
+      "name": "attacker3 ServiceDesk",
+      "protocol": "http",
+      "gatewayPort": 8013,
+      "sandboxIp": "10.80.0.13",
+      "sandboxPort": 8080
+    },
+    {
+      "name": "attacker4 ServiceDesk",
+      "protocol": "http",
+      "gatewayPort": 8014,
+      "sandboxIp": "10.80.0.14",
+      "sandboxPort": 8080
+    }
+  ]
+}
