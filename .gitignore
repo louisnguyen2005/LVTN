@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.coverage
+checker/results/
+checker/credentials.json
+gameserver/runtime*/
+gameserver/services.json
+*.sqlite-wal
+*.sqlite-shm
+dist/

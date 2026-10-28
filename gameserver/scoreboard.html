@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CTF Arena Scoreboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#060912;--bg2:#0a1020;--panel:#0d1528cc;--line:#1c2a48;--text:#d8e3ff;--muted:#7d8db3;--cyan:#22d3ee;--pink:#f472b6;--gold:#fbbf24;
+--up:#4ade80;--down:#f43f5e;--mumble:#fb923c;--corrupt:#a78bfa;--error:#64748b;--pending:#38bdf8;
+--mono:"JetBrains Mono",Consolas,"Cascadia Mono",monospace;--display:Orbitron,"Segoe UI",system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",system-ui,sans-serif}
+body{min-height:100vh;background:radial-gradient(1200px 600px at 10% -10%,#16306055,transparent),radial-gradient(900px 500px at 110% 10%,#4c1d9544,transparent),var(--bg)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#ffffff05 0 1px,transparent 1px 3px);z-index:50}
+a{color:var(--cyan)}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;padding:12px max(16px,calc((100vw - 1320px)/2));background:#060912e6;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.logo{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:2px;background:linear-gradient(90deg,var(--cyan),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.logo small{font-size:11px;letter-spacing:3px}
+.event{color:var(--muted);font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spacer{flex:1}.nav{display:flex;gap:8px}
+.btn{font-family:var(--display);font-size:12px;letter-spacing:1px;text-decoration:none;color:var(--text);border:1px solid var(--line);padding:8px 14px;border-radius:6px;background:#0d1528}
+.btn.primary{border-color:var(--pink);color:#fff;background:linear-gradient(90deg,#be185d55,#7c3aed55);box-shadow:0 0 18px #f472b633}
+.conn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}.conn i{width:8px;height:8px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up)}.conn.bad i{background:var(--down);box-shadow:0 0 8px var(--down)}
+main{max-width:1320px;margin:0 auto;padding:20px 16px 40px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+.panel:after{content:"";position:absolute;top:0;left:18px;right:18px;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.5}
+h2{font-family:var(--display);font-size:13px;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;color:#9fb3e6;display:flex;align-items:center;gap:10px}
+h2 .count{font-family:var(--mono);color:var(--muted);letter-spacing:0;font-size:12px}
+.hud{display:grid;grid-template-columns:260px 1fr;gap:16px;margin-bottom:16px}
+.clock{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring{position:relative;width:190px;height:190px}.ring svg{transform:rotate(-90deg)}
+.ring .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .sec{font-family:var(--display);font-size:42px;font-weight:800;line-height:1;text-shadow:0 0 18px #22d3ee88}
+.ring .lbl{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:6px}
+.phase{margin-top:12px;font-family:var(--display);font-size:12px;letter-spacing:2px;padding:5px 12px;border-radius:20px;border:1px solid var(--line)}
+.phase.running{color:var(--up);border-color:#4ade8066;box-shadow:0 0 14px #4ade8033}.phase.running:before{content:"● ";animation:blink 1.2s infinite}
+.phase.finished{color:var(--gold);border-color:#fbbf2466}.phase.ready{color:var(--pending)}
+@keyframes blink{50%{opacity:.2}}
+.mission{display:flex;flex-direction:column;gap:14px}
+.mission-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.kicker{font-family:var(--display);font-size:11px;letter-spacing:3px;color:var(--pink)}
+.service-name{font-family:var(--display);font-size:24px;font-weight:800;margin:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:#0a1020;color:var(--muted)}.chip b{color:var(--text)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:#0a1020;border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat span{display:block;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.stat strong{font-family:var(--display);font-size:24px}
+.timeline{display:flex;gap:3px;height:16px}.timeline i{flex:1;border-radius:2px;background:#16213b}
+.timeline i.done{background:linear-gradient(180deg,#22d3ee,#0e7490)}.timeline i.now{background:var(--pink);box-shadow:0 0 10px var(--pink);animation:blink 1s infinite}
+.timeline i.split{margin-left:8px}
+.tl-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+.board{display:flex;flex-direction:column;gap:10px}
+.team{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(90deg,#0d1528,#0a1020);transition:transform .4s}
+.team.r1{border-color:#fbbf2488;box-shadow:0 0 24px #fbbf2422,inset 0 0 30px #fbbf240d}
+.team.r2{border-color:#cbd5e166}.team.r3{border-color:#d9770666}
+.rank{font-family:var(--display);font-weight:800;font-size:26px;text-align:center;color:var(--muted)}
+.r1 .rank{color:var(--gold);text-shadow:0 0 14px #fbbf24aa}.r2 .rank{color:#e2e8f0}.r3 .rank{color:#f59e0b}
+.rank small{display:block;font-size:9px;letter-spacing:2px}
+.tname{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:16px;font-weight:600}
+.avatar{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:800;color:#060912;flex:none}
+.led{width:10px;height:10px;border-radius:50%;flex:none}
+.bars{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#16213b;margin:8px 0 6px}
+.bars .sla{background:var(--cyan)}.bars .atk{background:var(--pink)}.bars .def{background:var(--down);opacity:.8}
+.mini{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--mono);font-size:11px;color:var(--muted)}.mini b{color:var(--text);font-weight:700}
+.score{font-family:var(--display);font-size:28px;font-weight:800;text-align:right;min-width:90px}
+.score small{display:block;font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:600}
+.flash{animation:flash 1.2s}@keyframes flash{0%{color:#fff;text-shadow:0 0 20px var(--pink)}100%{}}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--muted);margin-top:10px}.legend span{display:flex;align-items:center;gap:5px}.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.UP{--c:var(--up)}.DOWN{--c:var(--down)}.MUMBLE{--c:var(--mumble)}.CORRUPT{--c:var(--corrupt)}.ERROR{--c:var(--error)}.PENDING{--c:var(--pending)}.UNCHECKED,.UNKNOWN{--c:#334155}.MISMATCH{--c:var(--mumble)}
+.led,.legend i{background:var(--c);box-shadow:0 0 8px var(--c)}
+.tag{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--c);border:1px solid var(--c);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.feed{display:flex;flex-direction:column;gap:6px;max-height:430px;overflow-y:auto;overflow-x:hidden}
+.kill{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#0a1020;border-left:3px solid var(--pink);font-size:13px;animation:slide .5s}
+.kill.fb{border-left-color:var(--gold);background:linear-gradient(90deg,#fbbf2422,#0a1020)}
+.kill{flex-wrap:wrap}.kill .who{font-weight:700}.kill .sword{color:var(--pink)}.kill .meta{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.fbtag{font-family:var(--display);font-size:9px;letter-spacing:1px;color:#060912;background:var(--gold);border-radius:3px;padding:2px 5px}
+@keyframes slide{from{transform:translateX(30px);opacity:0}}
+.empty{color:var(--muted);font-size:13px;padding:14px;text-align:center;border:1px dashed var(--line);border-radius:8px}
+.heat{overflow:auto}.heat table{border-collapse:separate;border-spacing:3px}
+.heat th{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400;padding:0 2px}.heat th.team{text-align:right;padding-right:8px;font-size:12px;color:var(--text);white-space:nowrap}
+.heat td{width:22px;min-width:22px;height:22px;border-radius:4px;background:#121c33}
+.heat td.s{background:var(--c);opacity:.85}.heat td.s.UP{opacity:.55}.heat td.now{outline:2px solid var(--pink);animation:blink 1s infinite}
+.heat td.split,.heat th.split{border-left:2px solid var(--pink)}
+.net svg{width:100%;height:auto;display:block}
+.net text{font-family:var(--mono);fill:var(--text)}
+.console{font-family:var(--mono);font-size:12px;background:#03060d;border:1px solid var(--line);border-radius:8px;padding:10px;height:300px;overflow:auto;line-height:1.7}
+.console{overflow-x:hidden}.console div{white-space:normal;word-break:break-word;padding-left:2ch;text-indent:-2ch}.console .t{color:#475569}.console .a{color:var(--cyan)}.console .d{color:var(--muted)}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+.toast{position:fixed;left:50%;top:90px;transform:translateX(-50%) scale(.8);opacity:0;z-index:60;pointer-events:none;font-family:var(--display);text-align:center;padding:16px 34px;border-radius:12px;background:#0d1528f2;border:1px solid var(--gold);box-shadow:0 0 60px #fbbf2455;transition:.35s}
+.toast.show{opacity:1;transform:translateX(-50%) scale(1)}.toast b{display:block;font-size:30px;color:var(--gold);letter-spacing:4px;text-shadow:0 0 20px #fbbf24}.toast span{font-size:14px;letter-spacing:1px}
+[hidden]{display:none!important}
+@media(max-width:1000px){.hud,.grid2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.top{flex-wrap:wrap;gap:10px}.event{display:none}.team{grid-template-columns:40px minmax(0,1fr);}.score{grid-column:1/-1;text-align:left}.rank{font-size:20px}.service-name{font-size:19px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<header class="top"><div class="logo">CTF://ARENA <small>A/D</small></div><div class="event" id="event">Đang kết nối…</div><div class="spacer"></div>
+<nav class="nav"><a class="btn" href="/">Scoreboard</a><a class="btn primary" href="/submit" id="submit-link">⚑ Nộp flag</a></nav>
+<div class="conn" id="conn" role="status"><i></i><span>Đang tải</span></div></header>
+<main>
+<section class="hud">
+  <div class="panel clock">
+    <div class="ring"><svg width="190" height="190" viewBox="0 0 190 190" aria-hidden="true">
+      <circle cx="95" cy="95" r="84" fill="none" stroke="#16213b" stroke-width="10"/>
+      <circle id="arc" cx="95" cy="95" r="84" fill="none" stroke="url(#g)" stroke-width="10" stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="0"/>
+      <defs><linearGradient id="g"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#f472b6"/></linearGradient></defs></svg>
+      <div class="center"><div class="sec" id="remaining">--</div><div class="lbl">giây / tick</div></div></div>
+    <div class="phase" id="phase">—</div>
+  </div>
+  <div class="panel mission">
+    <div class="mission-head"><div><div class="kicker" id="round-label">ROUND —</div><div class="service-name" id="service">Chưa bắt đầu</div>
+      <div class="chips" id="chips"></div></div>
+      <div class="chips" id="mode-chips"></div></div>
+    <div class="stats">
+      <div class="stat"><span>Tick</span><strong id="tick">—</strong></div>
+      <div class="stat"><span>Flag đã cắm</span><strong id="planted">—</strong></div>
+      <div class="stat"><span>Flag bị đánh cắp</span><strong id="captures">—</strong></div>
+      <div class="stat"><span>Lượt nộp flag</span><strong id="submissions">—</strong></div>
+    </div>
+    <div><div class="timeline" id="timeline"></div><div class="tl-labels"><span>Tick 1</span><span id="tl-mid"></span><span id="tl-end">—</span></div></div>
+  </div>
+</section>
+<section class="grid2">
+  <div class="panel"><h2>Bảng xếp hạng <span class="count" id="rules"></span></h2><div class="board" id="board"></div>
+    <div class="legend"><span><i style="background:var(--cyan)"></i>SLA (giữ service sống)</span><span class="ad"><i style="background:var(--pink)"></i>Tấn công (flag cướp được)</span><span class="ad"><i style="background:var(--down)"></i>Phạt phòng thủ (flag bị mất)</span></div></div>
+  <div class="panel ad"><h2>Kill feed <span class="count" id="feed-count"></span></h2><div class="feed" id="feed"></div></div>
+</section>
+<section class="panel" style="margin-bottom:16px"><h2>Trạng thái service theo tick</h2><div class="heat" id="heat"></div>
+  <div class="legend"><span class="UP"><i></i>UP</span><span class="CORRUPT"><i></i>CORRUPT · mất flag cũ</span><span class="MUMBLE"><i></i>MUMBLE · sai chức năng</span><span class="DOWN"><i></i>DOWN · không kết nối</span><span class="ERROR"><i></i>ERROR · checker lỗi/trễ</span></div></section>
+<section class="grid2">
+  <div class="panel net"><h2>Kết nối máy thật ⇄ pool VM <span class="count" id="net-count"></span></h2><div id="net"></div></div>
+  <div class="panel"><h2>Checker console <span class="count">CHECK → PUT → GET</span></h2><div class="console" id="console"></div></div>
+</section>
+<footer>Mỗi tick checker CHECK sức khoẻ service, PUT flag mới bằng API thường và GET lại mọi flag còn hạn. Lịch và deadline do backend quyết định.</footer>
+</main>
+<div class="toast" id="toast"><b>FIRST BLOOD</b><span id="toast-text"></span></div>
+<script>
+const $=id=>document.getElementById(id);
+const COLORS=['#22d3ee','#f472b6','#a3e635','#fbbf24','#a78bfa','#fb7185','#34d399','#60a5fa'];
+const teamColor={};function colorOf(t){if(!(t in teamColor))teamColor[t]=COLORS[Object.keys(teamColor).length%COLORS.length];return teamColor[t]}
+function h(tag,attrs={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==='class')e.className=v;else if(k==='style')e.style.cssText=v;else if(k==='text')e.textContent=v;else e.setAttribute(k,v)}for(const k of kids)if(k!=null)e.append(k);return e}
+function svg(tag,attrs={},text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);if(text!=null)e.textContent=text;return e}
+const STATUS_VI={UP:'UP',DOWN:'DOWN',MUMBLE:'MUMBLE',CORRUPT:'CORRUPT',ERROR:'ERROR',PENDING:'ĐANG ĐO',UNCHECKED:'—'};
+function tag(s){return h('span',{class:'tag '+s,text:STATUS_VI[s]??s})}
+const fmtTime=t=>t?new Date(t*1000).toLocaleTimeString('vi-VN',{hour12:false}):'';
+let deadline=null,tickLen=1,offset=0,lastScores={},seenFeed=null,firstLoad=true;
+
+async function get(path){const r=await fetch(path,{cache:'no-store'});if(!r.ok)throw Error(path);return r.json()}
+
+function renderHud(d,flags,feed){
+  $('event').textContent=d.event_id+(d.demo?' · DEMO':'');
+  const ph=$('phase');ph.className='phase '+d.phase;ph.textContent={ready:'CHỜ BẮT ĐẦU',running:'ĐANG THI',finished:'KẾT THÚC'}[d.phase];
+  $('round-label').textContent=`ROUND ${d.round??'—'} / ${d.rules.max_rounds} · TICK ${d.tick_in_round??'—'} / ${d.ticks_per_round??'—'}`;
+  $('service').textContent=d.service?.name??'Chưa chọn service';
+  const chips=$('chips');chips.replaceChildren();
+  if(d.service){chips.append(h('span',{class:'chip'},h('b',{text:d.service.vulnerability_count}),' lỗ hổng'),h('span',{class:'chip'},'service ',h('b',{text:d.service.id})))}
+  chips.append(h('span',{class:'chip'},'tick ',h('b',{text:d.rules.tick_seconds+'s'})),h('span',{class:'chip'},'round ',h('b',{text:d.rules.round_seconds/60+' phút'})));
+  const mc=$('mode-chips');mc.replaceChildren(h('span',{class:'chip'},'mode ',h('b',{text:d.mode==='ad'?'ATTACK / DEFENSE':'SLA'})));
+  if(d.mode==='ad')mc.append(h('span',{class:'chip'},'flag TTL ',h('b',{text:d.rules.flag_ttl_ticks+' tick'})));
+  $('tick').textContent=(d.tick??'—')+' / '+d.total_ticks;
+  $('planted').textContent=flags?flags.planted:'—';$('captures').textContent=feed?feed.captures:'—';$('submissions').textContent=feed?feed.submissions:'—';
+  deadline=d.tick_ends_at;tickLen=d.rules.tick_seconds;offset=d.server_time-Date.now()/1000;
+  const tl=$('timeline');tl.replaceChildren();
+  for(let i=1;i<=d.total_ticks;i++){const c=i<(d.tick??0)||(d.phase==='finished'&&d.tick)?'done':(i===d.tick&&d.phase==='running'?'now':'');
+    tl.append(h('i',{class:c+(i>1&&(i-1)%d.ticks_per_round===0?' split':''),title:'Tick '+i}))}
+  $('tl-end').textContent='Tick '+d.total_ticks;$('tl-mid').textContent=d.rules.max_rounds>1?'▲ đổi service mỗi '+d.ticks_per_round+' tick':'';
+  $('rules').textContent=d.mode==='ad'?`UP +${d.rules.sla_points} · cướp flag +${d.rules.attack_points} · mất flag −${d.rules.defense_penalty}`:`UP +${d.rules.sla_points} SLA/tick`;
+}
+
+function renderBoard(d){
+  const board=$('board');board.replaceChildren();
+  const ad=d.mode==='ad';
+  const max=Math.max(1,...d.teams.map(t=>(t.sla_points||0)+(t.attack_points||0)+(t.defense_penalty||0)));
+  d.teams.forEach((t,i)=>{
+    const rank=t.rank??i+1;const changed=lastScores[t.team]!==undefined&&lastScores[t.team]!==t.score;lastScores[t.team]=t.score;
+    const c=colorOf(t.team);
+    const bars=h('div',{class:'bars'},h('i',{class:'sla',style:`width:${100*(t.sla_points||0)/max}%`}));
+    if(ad)bars.append(h('i',{class:'atk',style:`width:${100*(t.attack_points||0)/max}%`}),h('i',{class:'def',style:`width:${100*(t.defense_penalty||0)/max}%`}));
+    const sla=t.checks?Math.round(100*t.up_checks/t.checks):0;
+    const mini=h('div',{class:'mini'},h('span',{},'SLA ',h('b',{text:t.sla_points}),` (${sla}% UP)`));
+    if(ad)mini.append(h('span',{},'⚔ ',h('b',{text:t.captures}),' cướp +'+t.attack_points),h('span',{},'🛡 ',h('b',{text:t.flags_lost}),' mất −'+t.defense_penalty),h('span',{},'⚑ ',h('b',{text:t.flags_planted}),' đã cắm'));
+    if(t.statuses?.CORRUPT)mini.append(h('span',{},'CORRUPT ',h('b',{text:t.statuses.CORRUPT})));
+    const st=t.current_status;
+    board.append(h('div',{class:'team r'+rank},
+      h('div',{class:'rank'},'#'+rank,h('small',{text:rank===1?'LEADER':''})),
+      h('div',{},h('div',{class:'tname'},h('span',{class:'avatar',style:'background:'+c,text:t.team.replace(/\D/g,'').slice(-2)||t.team[0]}),h('span',{text:t.team}),h('span',{class:'led '+st,title:'Tick hiện tại: '+st}),tag(st)),bars,mini),
+      h('div',{class:'score'+(changed?' flash':'')},String(t.score),h('small',{text:'ĐIỂM'}))));
+  });
+}
+
+function renderFeed(feed){
+  const box=$('feed');box.replaceChildren();$('feed-count').textContent=feed.captures+' lần cướp flag';
+  if(!feed.events.length)box.append(h('div',{class:'empty',text:'Chưa có đội nào cướp được flag. Ai sẽ lấy FIRST BLOOD?'}));
+  for(const e of feed.events){
+    box.append(h('div',{class:'kill'+(e.first_blood?' fb':'')},
+      e.first_blood?h('span',{class:'fbtag',text:'FIRST BLOOD'}):null,
+      h('span',{class:'who',style:'color:'+colorOf(e.attacker),text:e.attacker}),h('span',{class:'sword',text:'⚔'}),
+      h('span',{class:'who',style:'color:'+colorOf(e.victim),text:e.victim}),
+      h('span',{class:'meta',text:`${e.service_id} · T${e.tick} · +${e.attack_points} · ${fmtTime(e.captured_at)}`})));
+  }
+  const newest=feed.events[0];
+  if(newest&&seenFeed!==null&&newest.captured_at>seenFeed){
+    const fb=feed.events.find(e=>e.first_blood&&e.captured_at>seenFeed);
+    if(fb)toast(`${fb.attacker} ⚔ ${fb.victim} · ${fb.service_name}`);
+  }
+  seenFeed=newest?newest.captured_at:(seenFeed??0);
+}
+
+function toast(text){$('toast-text').textContent=text;$('toast').classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.remove('show'),3500)}
+
+function renderHeat(d,checks){
+  const by={};for(const c of checks.checks)by[c.team+'|'+c.tick]=c;
+  const teams=d.teams.map(t=>t.team).sort();
+  const tbl=h('table');const head=h('tr',{},h('th'));
+  for(let i=1;i<=d.total_ticks;i++)head.append(h('th',{class:i>1&&(i-1)%d.ticks_per_round===0?'split':'',text:i%5===0||i===1?i:''}));
+  tbl.append(head);
+  for(const team of teams){const tr=h('tr',{},h('th',{class:'team',text:team}));
+    for(let i=1;i<=d.total_ticks;i++){const c=by[team+'|'+i];const split=i>1&&(i-1)%d.ticks_per_round===0?' split':'';
+      const now=d.phase==='running'&&i===d.tick&&!c;
+      const td=h('td',{class:(c?'s '+c.status:'')+(now?' now':'')+split});
+      td.title=c?`Tick ${i} · ${team} · ${c.status} · ${c.elapsed_ms} ms\n${c.detail||''}`:(now?'Đang đo…':'Tick '+i);
+      tr.append(td)}
+    tbl.append(tr)}
+  $('heat').replaceChildren(tbl);
+}
+
+function renderNet(net){
+  const links=net.links;$('net-count').textContent=links.filter(l=>l.status==='UP').length+'/'+links.length+' link UP';
+  if(!links.length){$('net').replaceChildren(h('div',{class:'empty',text:'Chưa cấu hình link gateway.'}));return}
+  const rowH=62,H=Math.max(240,links.length*rowH+20),W=640,midY=H/2;
+  const s=svg('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Sơ đồ kết nối'});
+  const node=(x,y,title,sub,color)=>{const g=svg('g');g.append(svg('rect',{x:x-58,y:y-28,width:116,height:56,rx:10,fill:'#0a1020',stroke:color,'stroke-width':1.5}),
+    svg('text',{x,y:y-5,'text-anchor':'middle','font-size':13,'font-weight':700},title),svg('text',{x,y:y+14,'text-anchor':'middle','font-size':10,fill:'#7d8db3'},sub));return g};
+  const col=st=>({UP:'#4ade80',DOWN:'#f43f5e',MISMATCH:'#fb923c'}[st]||'#334155');
+  const allUp=links.every(l=>l.status==='UP');
+  s.append(svg('path',{d:`M118 ${midY} H 162`,stroke:allUp?'#22d3ee':'#64748b','stroke-width':2,'stroke-dasharray':'6 6',fill:'none'}));
+  s.append(svg('path',{d:`M278 ${midY} H 302`,stroke:'#22d3ee','stroke-width':2,'stroke-dasharray':'6 6',fill:'none'}));
+  links.forEach((l,i)=>{const y=10+i*rowH+rowH/2;const c=col(l.status);
+    s.append(svg('path',{d:`M418 ${midY} C 450 ${midY}, 440 ${y}, 472 ${y}`,stroke:c,'stroke-width':l.status==='UP'?2.5:1.5,fill:'none','stroke-dasharray':l.status==='UP'?'':'4 5'}));
+    const g=svg('g');g.append(svg('rect',{x:472,y:y-25,width:164,height:50,rx:8,fill:'#0a1020',stroke:c,'stroke-width':1.5}),
+      svg('circle',{cx:486,cy:y-8,r:5,fill:c}),
+      svg('text',{x:497,y:y-3,'font-size':13,'font-weight':700},(l.node||l.name).slice(0,14)+(l.identity_ok?' ✓':'')),
+      svg('text',{x:482,y:y+15,'font-size':10,fill:'#7d8db3'},`${l.vm} · ${l.latency_ms??'—'}ms`));
+    const t=svg('title',{},`${l.name}\n${l.gateway} → ${l.vm}\nUptime ${l.uptime??'—'}%\n${l.status}: ${l.detail}${l.identity_ok===false?'\nSAI VM!':''}`);g.append(t);s.append(g);
+    s.append(svg('text',{x:470,y:y-29,'font-size':9,fill:'#7d8db3','text-anchor':'end'},':'+l.gateway.split(':').pop()));
+  });
+  s.append(node(60,midY,'Máy thật','Checker','#22d3ee'),node(220,midY,'Gateway',net.gateway||'—','#f472b6'),node(360,midY,'Jump host','CyberRangeCZ','#a78bfa'));
+  $('net').replaceChildren(s);
+}
+
+function renderConsole(trace){
+  const box=$('console');const atBottom=box.scrollTop===0;box.replaceChildren();
+  if(!trace.actions.length){box.append(h('div',{class:'d',text:'> checker chưa gửi kết quả nào…'}));return}
+  for(const a of trace.actions){
+    const what=a.action+(a.action!=='CHECK'&&a.flag_tick!=null?`(flag T${a.flag_tick})`:'');
+    box.append(h('div',{},h('span',{class:'t',text:`[${fmtTime(a.created_at)}] T${String(a.tick).padStart(2,'0')} `}),
+      h('span',{style:'color:'+colorOf(a.team),text:a.team+' '}),h('span',{class:'a',text:what.padEnd(14,' ')+' '}),tag(a.status),
+      h('span',{class:'d',text:` ${a.elapsed_ms}ms  ${a.detail}`})));
+  }
+  if(atBottom)box.scrollTop=0;
+}
+
+async function load(){
+  try{
+    const[d,checks,net,trace]=await Promise.all(['/api/scoreboard','/api/checks','/api/network','/api/trace'].map(get));
+    const ad=d.mode==='ad';
+    const[feed,flags]=ad?await Promise.all([get('/api/feed'),get('/api/flags')]):[null,null];
+    document.querySelectorAll('.ad').forEach(e=>e.hidden=!ad);$('submit-link').hidden=!ad;
+    if(firstLoad)[...d.teams].map(t=>t.team).sort().forEach(colorOf);
+    renderHud(d,flags,feed);renderBoard(d);renderHeat(d,checks);renderNet(net);renderConsole(trace);
+    if(ad)renderFeed(feed);
+    firstLoad=false;$('conn').className='conn';$('conn').lastChild.textContent='LIVE';
+  }catch(e){$('conn').className='conn bad';$('conn').lastChild.textContent='Mất kết nối';}
+}
+setInterval(()=>{const left=deadline==null?null:Math.max(0,deadline-(Date.now()/1000+offset));
+  $('remaining').textContent=left==null?'--':Math.ceil(left);
+  $('arc').setAttribute('stroke-dashoffset',left==null?527.8:527.8*(1-left/tickLen))},250);
+load();setInterval(load,2000);
+</script></body></html>

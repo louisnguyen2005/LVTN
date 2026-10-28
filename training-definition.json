@@ -1,0 +1,22 @@
+{
+  "title": "IDOR Lab — Four Attackers and One Server",
+  "description": "One sandbox with four Kali attacker VMs and one ServiceDesk server on a shared LAN.",
+  "prerequisites": ["Basic HTTP", "Basic Linux commands"],
+  "outcomes": ["Reach all five lab hosts", "Observe an IDOR on ServiceDesk"],
+  "state": "UNRELEASED",
+  "show_stepper_bar": false,
+  "estimated_duration": 60,
+  "variant_sandboxes": false,
+  "levels": [
+    {
+      "title": "Five-host IDOR Lab",
+      "level_type": "ACCESS_LEVEL",
+      "order": 0,
+      "estimated_duration": 60,
+      "minimal_possible_solve_time": null,
+      "passkey": "finish-idor-lab",
+      "cloud_content": "# One sandbox, four team VMs\n\nOpen the topology console or SSH into your assigned attacker VM. Linux login: `user-access` with the console password your organizers gave your team. Each team has its own password and SSH keys are not used, so you can only log in to your own VM. The four Kali identity pages are `http://10.80.0.11/`, `http://10.80.0.12/`, `http://10.80.0.13/`, and `http://10.80.0.14/`. Attackers can ping and open HTTP pages on the other attacker VMs.\n\nEach attacker VM also runs its own ServiceDesk on port 8080 with its own database: attacker1 `http://10.80.0.11:8080/`, attacker2 `http://10.80.0.12:8080/`, attacker3 `http://10.80.0.13:8080/`, attacker4 `http://10.80.0.14:8080/`. From the school LAN, use the Windows gateway `10.13.128.29` on ports 8011, 8012, 8013, and 8014 respectively. ServiceDesk username is `alice`; the generated password is in `~/lab-addresses.txt` on your assigned VM.\n\nThe shared ServiceDesk server at `10.80.0.20` is isolated: new connections from attacker VMs to it are blocked, including ping and HTTP. The server can initiate connections to the attackers. The separate router is `10.80.0.1`; the server does not route traffic. Keep this level open during the lab. Enter `finish-idor-lab` only when done.",
+      "local_content": "This lab is designed for a CyberRangeCZ cloud sandbox. Open its assigned Training Instance."
+    }
+  ]
+}

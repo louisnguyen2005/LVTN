@@ -1,0 +1,8 @@
+roles:
+  - name: user-access
+    src: https://github.com/cyberrangecz/ansible-role-user-access.git
+    scm: git
+    version: v1.0.0
+collections:
+  - name: ansible.posix
+    version: '2.0.0'

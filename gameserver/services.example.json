@@ -1,0 +1,28 @@
+{
+  "services": [
+    {
+      "id": "service01",
+      "name": "Service round 1",
+      "vulnerability_count": 5,
+      "check": "health",
+      "targets": {
+        "team01": {"url": "http://10.13.128.29:8011/health", "expected_sandbox_suffix": "-attacker1"},
+        "team02": {"url": "http://10.13.128.29:8012/health", "expected_sandbox_suffix": "-attacker2"},
+        "team03": {"url": "http://10.13.128.29:8013/health", "expected_sandbox_suffix": "-attacker3"},
+        "team04": {"url": "http://10.13.128.29:8014/health", "expected_sandbox_suffix": "-attacker4"}
+      }
+    },
+    {
+      "id": "service02",
+      "name": "Service round 2",
+      "vulnerability_count": 5,
+      "check": "health",
+      "targets": {
+        "team01": {"url": "<ROUND2_TEAM01_HEALTH_URL>", "expected_sandbox_suffix": "-attacker1"},
+        "team02": {"url": "<ROUND2_TEAM02_HEALTH_URL>", "expected_sandbox_suffix": "-attacker2"},
+        "team03": {"url": "<ROUND2_TEAM03_HEALTH_URL>", "expected_sandbox_suffix": "-attacker3"},
+        "team04": {"url": "<ROUND2_TEAM04_HEALTH_URL>", "expected_sandbox_suffix": "-attacker4"}
+      }
+    }
+  ]
+}
