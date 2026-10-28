@@ -1,0 +1,15 @@
+all:
+  children:
+    hosts:
+      hosts:
+        attacker1:
+        attacker2:
+        attacker3:
+        attacker4:
+        server:
+    attackers:
+      hosts:
+        attacker1:
+        attacker2:
+        attacker3:
+        attacker4:

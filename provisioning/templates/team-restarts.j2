@@ -1,0 +1,4 @@
+# Generated from lab_services; each entry restarts only one unprivileged service.
+{% for service in lab_services %}
+user-access ALL=(root) NOPASSWD: /usr/bin/systemctl restart servicedesk@{{ service.id }}.service
+{% endfor %}

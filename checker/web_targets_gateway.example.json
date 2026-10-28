@@ -1,0 +1,28 @@
+{
+  "targets": [
+    {
+      "name": "team01",
+      "url": "http://127.0.0.1:8011/health",
+      "expected_sandbox_suffix": "-attacker1",
+      "expected_service": "shop01"
+    },
+    {
+      "name": "team02",
+      "url": "http://127.0.0.1:8012/health",
+      "expected_sandbox_suffix": "-attacker2",
+      "expected_service": "shop01"
+    },
+    {
+      "name": "team03",
+      "url": "http://127.0.0.1:8013/health",
+      "expected_sandbox_suffix": "-attacker3",
+      "expected_service": "shop01"
+    },
+    {
+      "name": "team04",
+      "url": "http://127.0.0.1:8014/health",
+      "expected_sandbox_suffix": "-attacker4",
+      "expected_service": "shop01"
+    }
+  ]
+}

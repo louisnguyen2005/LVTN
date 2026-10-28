@@ -1,0 +1,28 @@
+{
+  "title": "NOVA MART Attack–Defense CTF",
+  "description": "An isolated per-team web shop with tick-based functional SLA checks, short-lived flags, and an attack–defense scoreboard.",
+  "prerequisites": [
+    "Basic HTTP",
+    "Basic Linux commands"
+  ],
+  "outcomes": [
+    "Operate and patch a web shop",
+    "Monitor service SLA and attack–defense scoring"
+  ],
+  "state": "UNRELEASED",
+  "show_stepper_bar": false,
+  "estimated_duration": 60,
+  "variant_sandboxes": false,
+  "levels": [
+    {
+      "title": "CTF service access",
+      "level_type": "ACCESS_LEVEL",
+      "order": 0,
+      "estimated_duration": 60,
+      "minimal_possible_solve_time": null,
+      "passkey": "finish-idor-lab",
+      "cloud_content": "# NOVA MART Attack–Defense\n\nSSH/console account: `user-access`. Your organizer gives your team password. Per-service web URLs are in `~/lab-addresses.txt` on your VM. Each team receives an isolated instance.\n\n- team01 identity page: http://10.80.0.11/\n  - NOVA MART · Round 1: http://10.80.0.11:8080/\n  - NOVA MART · Round 2: http://10.80.0.11:8081/\n- team02 identity page: http://10.80.0.12/\n  - NOVA MART · Round 1: http://10.80.0.12:8080/\n  - NOVA MART · Round 2: http://10.80.0.12:8081/\n- team03 identity page: http://10.80.0.13/\n  - NOVA MART · Round 1: http://10.80.0.13:8080/\n  - NOVA MART · Round 2: http://10.80.0.13:8081/\n- team04 identity page: http://10.80.0.14/\n  - NOVA MART · Round 1: http://10.80.0.14:8080/\n  - NOVA MART · Round 2: http://10.80.0.14:8081/\n\nNew connections from attacker VMs to the shared server 10.80.0.20 are blocked. The router is 10.80.0.1.\n\nThe service is NOVA MART, an intentionally vulnerable web shop. Challenge paths: SQL injection in product search; CAPTCHA bypass; stored XSS in reviews; CSRF in order sharing; and weak merchant credentials with no effective rate limit. Order private notes hold short-lived flags. The functional checker creates one flag per team/service/tick, checks the current and still-active orders, and awards SLA only when that flow works.\n\nEvent schedule: 2 rounds × 30 minutes; 120 seconds/tick; 15 ticks/round. UP earns 1 SLA point; missed/DOWN/MUMBLE earns zero. A captured active flag earns 100 points and its owner loses 100. Flag lifetime: 3 ticks.\n\nFor external access, the organizer runs Configure-Deployment.ps1 after allocation and publishes the generated gateway URLs and scoreboard. The read-only operations monitor has its own token.\n\nEnter `finish-idor-lab` when done.",
+      "local_content": "Use the assigned CyberRangeCZ cloud Training Instance."
+    }
+  ]
+}

@@ -1,0 +1,438 @@
+---
+- name: Record the identity of every lab host
+  hosts: hosts
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Require generated deployment files to match the manifest
+      ansible.builtin.assert:
+        that:
+          - lab_deployment_sha256 == (lookup('ansible.builtin.file', playbook_dir ~ '/../deployment.json', rstrip=False) | replace('\r\n', '\n') | hash('sha256'))
+        fail_msg: 'Run python -m gameserver.definition --write before uploading this revision.'
+
+    - name: Generate a unique ServiceDesk password for this VM
+      ansible.builtin.set_fact:
+        lab_generated_web_password: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=24) }}"
+      no_log: true
+
+    - name: Require the sandbox identity and expected host name
+      ansible.builtin.assert:
+        that:
+          - global_sandbox_id is defined
+          - global_sandbox_id | length == 36
+          - inventory_hostname in lab_hosts
+    - name: Store sandbox and host identity
+      ansible.builtin.copy:
+        dest: /etc/idor-lab-identity.json
+        owner: root
+        group: root
+        mode: '0644'
+        content: '{{ dict(sandbox_uuid=global_sandbox_id, node=inventory_hostname) | to_nice_json }}'
+
+- name: Run ServiceDesk on the server VM
+  hosts: server
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Install runtime and network check tools
+      ansible.builtin.apt:
+        name: [python3, curl, iputils-ping, nftables]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Prevent the server from routing attacker traffic
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '0'
+        sysctl_set: true
+        state: present
+        reload: true
+
+    - name: Create the ServiceDesk system user
+      ansible.builtin.user:
+        name: free-lab-web
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Create ServiceDesk directories
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: directory
+        owner: '{{ item.owner }}'
+        group: free-lab-web
+        mode: '{{ item.mode }}'
+      loop:
+        - { path: /opt/idor-free-lab, owner: root, mode: '0750' }
+        - { path: /etc/idor-free-lab, owner: root, mode: '0750' }
+        - { path: /var/lib/idor-free-lab, owner: free-lab-web, mode: '0700' }
+
+    - name: Install the server access rules
+      ansible.builtin.copy:
+        src: server-acl.nft
+        dest: /etc/idor-free-lab/server-acl.nft
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart server ACL
+
+    - name: Install the server access rule loader
+      ansible.builtin.copy:
+        src: apply_server_acl.py
+        dest: /opt/idor-free-lab/apply_server_acl.py
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart server ACL
+
+    - name: Install the persistent server ACL service
+      ansible.builtin.copy:
+        src: idor-server-acl.service
+        dest: /etc/systemd/system/idor-server-acl.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart server ACL
+
+    - name: Start the server ACL before ServiceDesk
+      ansible.builtin.systemd_service:
+        name: idor-server-acl
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    - ansible.builtin.meta: flush_handlers
+
+    - name: Install the ServiceDesk application
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../app/{{ item }}'
+        dest: '/opt/idor-free-lab/{{ item }}'
+        owner: root
+        group: free-lab-web
+        mode: '0640'
+      loop: [portal.py, portal.html]
+      notify: Restart ServiceDesk
+
+    - name: Store ServiceDesk configuration
+      ansible.builtin.copy:
+        dest: /etc/idor-free-lab/config.json
+        owner: root
+        group: free-lab-web
+        mode: '0640'
+        content: >-
+          {{ dict(database='/var/lib/idor-free-lab/tickets.sqlite',
+          password=lab_generated_web_password,
+          sandbox_id=global_sandbox_id,
+          enforce_owner=lab_enforce_owner | bool) | to_nice_json }}
+      no_log: true
+      notify: Restart ServiceDesk
+
+    - name: Install the port 80 service unit
+      ansible.builtin.copy:
+        src: servicedesk.service
+        dest: /etc/systemd/system/servicedesk.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart ServiceDesk
+
+    - name: Start ServiceDesk
+      ansible.builtin.systemd_service:
+        name: servicedesk
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    - ansible.builtin.meta: flush_handlers
+
+    - name: Check the local ServiceDesk health endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1/health
+        use_proxy: false
+        return_content: true
+      register: server_local_health
+      until: server_local_health.status | default(0) == 200
+      retries: 10
+      delay: 3
+
+    - name: Require server forwarding to stay disabled
+      ansible.builtin.command: sysctl -n net.ipv4.ip_forward
+      register: server_ip_forward
+      changed_when: false
+      failed_when: server_ip_forward.stdout | trim != '0'
+  handlers:
+    - name: Restart server ACL
+      ansible.builtin.systemd_service:
+        name: idor-server-acl
+        daemon_reload: true
+        state: restarted
+    - name: Restart ServiceDesk
+      ansible.builtin.systemd_service:
+        name: servicedesk
+        daemon_reload: true
+        state: restarted
+
+- name: Give each attacker its own Kali console and HTTP page
+  hosts: attackers
+  become: true
+  gather_facts: true
+  vars:
+    user_access_username: user-access
+    user_access_password: '{{ lab_team_passwords[inventory_hostname] }}'
+    user_access_shell: /bin/bash
+    user_access_sudo: false
+  pre_tasks:
+    - name: Require a per-team console password for this host
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname in lab_team_passwords
+          - lab_team_passwords[inventory_hostname] | length > 0
+        fail_msg: >-
+          Every attacker host needs its own password in lab_team_passwords
+          (group_vars/all.yml) so each team can only reach its own VM.
+
+    - name: Install access and HTTP tools
+      ansible.builtin.apt:
+        name: [python3, openssh-server, curl, iputils-ping, sudo]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+  roles:
+    - role: user-access
+      no_log: true
+  tasks:
+    - name: Load SSH drop-ins before image defaults
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        line: 'Include /etc/ssh/sshd_config.d/*.conf'
+        insertbefore: BOF
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Reload attacker SSH
+
+    - name: Enable trainee console with password-only login (no SSH key)
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-idor-lab.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Match User user-access
+              PasswordAuthentication yes
+              PubkeyAuthentication no
+              AuthenticationMethods password
+              AllowTcpForwarding yes
+          Match all
+      notify: Reload attacker SSH
+
+    - name: Keep the trainee account and shell usable
+      ansible.builtin.user:
+        name: user-access
+        shell: /bin/bash
+        expires: -1
+        password_expire_max: -1
+
+    - name: Remove any SSH keys so the trainee account is password-only
+      ansible.builtin.file:
+        path: /home/user-access/.ssh/authorized_keys
+        state: absent
+      notify: Reload attacker SSH
+
+    - name: Create an unprivileged account for the attacker HTTP page
+      ansible.builtin.user:
+        name: attacker-http
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Create an unprivileged account for this team's ServiceDesk
+      ansible.builtin.user:
+        name: free-lab-web
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: /opt/idor-free-lab
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create this team's ServiceDesk configuration and data directories
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: directory
+        owner: '{{ item.owner }}'
+        group: free-lab-web
+        mode: '{{ item.mode }}'
+      loop:
+        - { path: /etc/idor-free-lab, owner: root, mode: '0750' }
+        - { path: /var/lib/idor-free-lab, owner: free-lab-web, mode: '0700' }
+
+    - name: Create the service source parent directory
+      ansible.builtin.file:
+        path: /opt/idor-free-lab/services
+        state: directory
+        owner: root
+        group: free-lab-web
+        mode: '0755'
+
+    - name: Give the trainee access to its own ServiceDesk configuration
+      ansible.builtin.user:
+        name: user-access
+        groups: free-lab-web
+        append: true
+
+    - name: Allow only fixed per-instance unprivileged restart commands
+      ansible.builtin.template:
+        src: team-restarts.j2
+        dest: /etc/sudoers.d/idor-team-service
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    - name: Install the attacker HTTP page
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../app/attacker_http.py'
+        dest: /opt/idor-free-lab/attacker_http.py
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart attacker HTTP
+
+    - name: Install the attacker HTTP systemd template
+      ansible.builtin.copy:
+        src: 'attacker-http@.service'
+        dest: '/etc/systemd/system/attacker-http@.service'
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart attacker HTTP
+
+    - name: Discover existing service units before migration
+      ansible.builtin.service_facts:
+
+    - name: Stop a legacy single-service instance before binding its port
+      ansible.builtin.systemd_service:
+        name: servicedesk-team
+        state: stopped
+        enabled: false
+      when: "'servicedesk-team.service' in ansible_facts.services"
+
+    - name: Install the per-instance ServiceDesk systemd template
+      ansible.builtin.copy:
+        src: 'servicedesk@.service'
+        dest: '/etc/systemd/system/servicedesk@.service'
+        owner: root
+        group: root
+        mode: '0644'
+      register: team_service_unit
+
+    - name: Start this attacker's port 80 service
+      ansible.builtin.systemd_service:
+        name: 'attacker-http@{{ inventory_hostname }}'
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    - name: Generate private per-service web passwords for this VM
+      ansible.builtin.set_fact:
+        lab_service_passwords: "{{ lab_service_passwords | default({}) | combine({item.id: lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=24)}) }}"
+      loop: '{{ lab_services }}'
+      no_log: true
+
+    - name: Configure every service declared in the deployment manifest
+      ansible.builtin.include_tasks: service-instance.yml
+      loop: '{{ lab_services }}'
+      loop_control:
+        loop_var: lab_service
+        label: '{{ lab_service.id }}'
+
+    - name: Write private service URLs and credentials for the trainee
+      ansible.builtin.template:
+        src: lab-addresses.j2
+        dest: /home/user-access/lab-addresses.txt
+        owner: user-access
+        group: user-access
+        mode: '0600'
+      no_log: true
+
+    - ansible.builtin.meta: flush_handlers
+
+    - name: Verify the local attacker HTTP page
+      ansible.builtin.uri:
+        url: http://127.0.0.1/health
+        use_proxy: false
+        return_content: true
+      register: attacker_local_health
+      until: attacker_local_health.status | default(0) == 200
+      retries: 10
+      delay: 3
+
+  handlers:
+    - name: Reload attacker SSH
+      ansible.builtin.service:
+        name: ssh
+        enabled: true
+        state: reloaded
+    - name: Restart attacker HTTP
+      ansible.builtin.systemd_service:
+        name: 'attacker-http@{{ inventory_hostname }}'
+        daemon_reload: true
+        state: restarted
+
+- name: Verify attacker peer connectivity and server isolation
+  hosts: hosts
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ping every attacker peer directly on the LAN
+      ansible.builtin.command:
+        argv: [ping, '-c', '1', '-W', '2', '{{ item.value }}']
+      loop: '{{ lab_attackers | dict2items }}'
+      when: item.key != inventory_hostname
+      register: peer_ping
+      until: peer_ping.rc == 0
+      retries: 3
+      delay: 2
+      changed_when: false
+
+    - name: Open each attacker HTTP health endpoint
+      ansible.builtin.uri:
+        url: 'http://{{ item.value }}/health'
+        use_proxy: false
+        return_content: true
+      loop: '{{ lab_attackers | dict2items }}'
+      register: attacker_http_checks
+      until: attacker_http_checks.status | default(0) == 200
+      retries: 3
+      delay: 2
+
+    - name: Require each HTTP response to identify the expected attacker
+      ansible.builtin.assert:
+        that:
+          - item.json.node == item.item.key
+      loop: '{{ attacker_http_checks.results }}'
+
+
+- name: Verify attackers cannot initiate traffic to the server
+  hosts: attackers
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Require attacker ping to the server to fail
+      ansible.builtin.command:
+        argv: [ping, '-c', '1', '-W', '2', '{{ lab_network.server_ip }}']
+      register: blocked_ping
+      changed_when: false
+      failed_when: blocked_ping.rc == 0
+
+    - name: Require server HTTP port to be unreachable from attackers
+      ansible.builtin.wait_for:
+        host: '{{ lab_network.server_ip }}'
+        port: 80
+        state: stopped
+        timeout: 5

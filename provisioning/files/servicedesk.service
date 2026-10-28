@@ -1,0 +1,25 @@
+[Unit]
+Description=ServiceDesk IDOR Free Lab
+After=network-online.target
+Wants=network-online.target
+Requires=idor-server-acl.service
+After=idor-server-acl.service
+
+[Service]
+User=free-lab-web
+Group=free-lab-web
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+WorkingDirectory=/opt/idor-free-lab
+ExecStart=/usr/bin/python3 /opt/idor-free-lab/portal.py --config /etc/idor-free-lab/config.json --host 0.0.0.0 --port 80
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/idor-free-lab
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+.coverage
+checker/results/
+checker/credentials.json
+gameserver/runtime*/
+gameserver/services.json
+gameserver/local.json
+artifacts/
+CyberRangeCZ-Windows-Gateway/config.json
+checker/web_targets_gateway.json
+*.sqlite-wal
+*.sqlite-shm

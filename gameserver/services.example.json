@@ -1,0 +1,60 @@
+{
+  "services": [
+    {
+      "id": "shop01",
+      "name": "NOVA MART · Round 1",
+      "vulnerability_count": 5,
+      "check": "shop",
+      "targets": {
+        "team01": {
+          "url": "http://127.0.0.1:8011/health",
+          "expected_sandbox_suffix": "-attacker1",
+          "expected_service": "shop01"
+        },
+        "team02": {
+          "url": "http://127.0.0.1:8012/health",
+          "expected_sandbox_suffix": "-attacker2",
+          "expected_service": "shop01"
+        },
+        "team03": {
+          "url": "http://127.0.0.1:8013/health",
+          "expected_sandbox_suffix": "-attacker3",
+          "expected_service": "shop01"
+        },
+        "team04": {
+          "url": "http://127.0.0.1:8014/health",
+          "expected_sandbox_suffix": "-attacker4",
+          "expected_service": "shop01"
+        }
+      }
+    },
+    {
+      "id": "shop02",
+      "name": "NOVA MART · Round 2",
+      "vulnerability_count": 5,
+      "check": "shop",
+      "targets": {
+        "team01": {
+          "url": "http://127.0.0.1:8021/health",
+          "expected_sandbox_suffix": "-attacker1",
+          "expected_service": "shop02"
+        },
+        "team02": {
+          "url": "http://127.0.0.1:8022/health",
+          "expected_sandbox_suffix": "-attacker2",
+          "expected_service": "shop02"
+        },
+        "team03": {
+          "url": "http://127.0.0.1:8023/health",
+          "expected_sandbox_suffix": "-attacker3",
+          "expected_service": "shop02"
+        },
+        "team04": {
+          "url": "http://127.0.0.1:8024/health",
+          "expected_sandbox_suffix": "-attacker4",
+          "expected_service": "shop02"
+        }
+      }
+    }
+  ]
+}

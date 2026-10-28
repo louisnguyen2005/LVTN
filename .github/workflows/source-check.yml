@@ -1,0 +1,24 @@
+name: Source and provisioning checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install source validation dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt -r requirements-runner.txt
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - name: Validate generated cloud files
+        run: python3 -m gameserver.definition
+      - name: Run HTTP and database tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Install provisioning dependencies
+        run: ansible-galaxy install -r provisioning/requirements.yml
+      - name: Check Ansible syntax without creating VMs
+        run: ansible-playbook -i tests/inventory.syntax.yml --syntax-check provisioning/playbook.yml
+      - name: Build source-only upload archive
+        run: python3 -m gameserver.package --output artifacts/LVTN-merged-cyberrange-ready.zip
