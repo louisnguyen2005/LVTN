@@ -1,5 +1,11 @@
 # One sandbox: four team VMs and one server
 
+## Automatic service SLA per tick
+
+The `gameserver/` backend now defaults to a one-hour SLA event: two 30-minute competition rounds, one service per round, and a 2-minute tick (15 ticks per round, 30 total). Each service records a configured vulnerability count of five. The checker measures the active service once per team/tick; UP earns 1 SLA by default, DOWN earns 0. Results are stored in SQLite and displayed with round, tick, active service and per-tick history. Vulnerability count is metadata; health checks do not exploit five vulnerabilities.
+
+Start an offline demo with `py -3 -m gameserver.demo`, then open `http://127.0.0.1:19000/`. Add `--fast` to simulate all 30 ticks in 60 seconds; demo team02 goes DOWN at tick 3 and recovers at tick 4. Both services are local simulations. For real deployment, fill both services in `gameserver/services.example.json`, then follow [the Vietnamese operations guide](gameserver/README.vi.md). New live events use `gameserver/runtime-sla/`. The existing health endpoint is sufficient for health mode; no flag placement or tickets-v2 deployment is required for these checks.
+
 This is one CyberRangeCZ Sandbox Definition. Create **one pool of size 1** from this repository root. The single sandbox contains four Kali attacker VMs (one per team), one Debian ServiceDesk server VM, and a separate gateway router.
 
 It combines two access models that work together:
@@ -133,7 +139,7 @@ python3 checker/web_health.py --config checker/web_targets_gateway.json --interv
 
 `--json` prints machine-readable rounds and `--interval N` repeats every N seconds. The exit code is non-zero if any target is down.
 
-### Automatic checker without a database
+### Diagnostic automatic checker with local JSON results
 
 The external checker runs through the Windows gateway; do not install it on a team VM or the sandbox router. Start the gateway tunnel first, and make sure the current allocation has the four ServiceDesk services on port 8080. The checker reads the sandbox UUID from `CyberRangeCZ-Windows-Gateway/config.json` and requires each response to identify the matching `attacker1`–`attacker4` VM. Update the gateway config after a new allocation.
 
@@ -157,7 +163,7 @@ For a functional check, copy `checker/credentials.example.json` to `checker/cred
 python checker/auto_check.py --credentials checker/credentials.json --interval 10
 ```
 
-This mode also logs in as `alice`, reads the ticket list and reads Alice's ticket without changing service data. A failed login or invalid ticket response is `MUMBLE`. `checker/credentials.json` is ignored by Git; update it after reprovisioning changes the passwords. The current checker does not rotate flags or assign Attack-Defense scores because the ServiceDesk application has no flag storage or scoring API yet.
+This diagnostic mode also logs in as `alice`, reads the ticket list and reads Alice's ticket without changing service data. A failed login or invalid ticket response is `MUMBLE`. `checker/credentials.json` is ignored by Git; update it after reprovisioning changes the passwords. Use `gameserver.worker` for the scheduled 2-minute ticks and SQLite-backed SLA results; `auto_check.py` remains a separate diagnostic tool.
 
 On the Windows gateway, you can register the checker to start automatically when your account signs in:
 

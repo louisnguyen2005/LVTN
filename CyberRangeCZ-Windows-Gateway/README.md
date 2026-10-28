@@ -6,14 +6,14 @@ The sandbox has four Kali VMs with identity pages on port 80. The provisioning p
 
 ## Map the example diagram to this deployment
 
-The addresses in the diagram are examples. The repository records the pool 96 allocation below; confirm that it is still active before starting the gateway:
+The addresses in the diagram are examples. The repository records the pool 103 allocation below; confirm that it is still active before starting the gateway:
 
 | Diagram role | Actual address/configuration | Status |
 | --- | --- | --- |
 | Windows Gateway | `10.13.128.29` | Present on this Windows PC |
 | Contestant PCs | Not provided | Obtain the exact subnet or IP allowlist from the LAN administrator |
 | CyberRangeCZ SSH jump host | `10.32.8.175:22` | SSH host from the supplied user config; verify its fingerprint on first use |
-| MAN alias | `user@192.168.64.120` via `10.32.8.175` | Resolved from the supplied SSH config |
+| MAN alias | `user@192.168.67.21` via `10.32.8.175` | Resolved from the supplied SSH config |
 | IDOR ServiceDesk | `10.80.0.20:80` | Server VM and service port in `topology.yml` and `README.md` |
 | Attacker VM identity pages | `10.80.0.11:80`–`10.80.0.14:80` | Static health/identity pages |
 | Per-team ServiceDesk | `10.80.0.11`–`10.80.0.14:8080` | One independent database per attacker VM; gateway ports 8011–8014 after reprovisioning |
@@ -26,13 +26,13 @@ The jump host is an SSH hop, not a web server. The configured forwards map `10.1
 
 - This Windows machine has Wi-Fi IPv4 `10.13.128.29` with mask `255.255.224.0` (`/19`); that confirms the gateway address, **not** the contestant scope.
 - Windows OpenSSH Client is installed at `C:\Windows\System32\OpenSSH\ssh.exe` (OpenSSH for Windows 9.5p1).
-- The SSH config and key recorded for pool 96 are expected in `%USERPROFILE%\.ssh`. They were not present on this Windows PC when the gateway IP was updated. Download the access ZIP for the active allocation and update `sshConfig` in `config.json` before starting the tunnel. The private-key ACL must grant read access only to the current Windows account.
+- The SSH config and key recorded for pool 103 are expected in `%USERPROFILE%\.ssh`. They were not present on this Windows PC when the gateway IP was updated. Download the access ZIP for the active allocation and update `sshConfig` in `config.json` before starting the tunnel. The private-key ACL must grant read access only to the current Windows account.
 - The supplied config disables host-key checking and sends known hosts to `/dev/null`. The scripts preserve that original file but connect through a generated wrapper that sets `StrictHostKeyChecking ask` and a dedicated `runtime\known_hosts` file for every hop. Check the jump host and MAN fingerprints with the platform administrator and accept them into the dedicated known-hosts store before the first start (the MAN host key can change with every new allocation).
 - The requested client scope is all IPv4 sources (`0.0.0.0/0`) that can route to the private gateway address. This includes the whole reachable LAN and any other routed private networks; narrow it if contestants should be limited to a smaller scope.
 
 ## Configure
 
-1. Put the current user SSH config and key at `%USERPROFILE%\.ssh\pool-id-96-sandbox-id-8aec30a6-4bca-4e2f-9f07-536622b1c6f6-user-config` and the matching `...-user-key` (this is the path in `config.json`). If the sandbox is reallocated, download the **user SSH access ZIP for that allocation** and update `sshConfig` and the key reference in its SSH config. Keep the private key on this gateway; do not put it in this project folder or share it with contestants.
+1. Put the current user SSH config and key at `%USERPROFILE%\.ssh\pool-id-103-sandbox-id-a8f86f71-8e8f-4c94-b061-d41af3b9d76a-user-config` and the matching `...-user-key` (this is the path in `config.json`). If the sandbox is reallocated, download the **user SSH access ZIP for that allocation** and update `sshConfig` and the key reference in its SSH config. Keep the private key on this gateway; do not put it in this project folder or share it with contestants.
 2. `sshHost` is set to `man`; `Test-CTFGateway.ps1` resolves it from the actual config. The diagram's `10.32.8.175` is configured as an SSH jump host, not as the IDOR HTTP target.
 3. Confirm service IPs and ports against the allocated sandbox/topology. The repo's current setup keeps attacker identity pages on `10.80.0.11`–`10.80.0.14:80`, adds team ServiceDesk instances on `10.80.0.11`–`10.80.0.14:8080`, and keeps shared ServiceDesk at `10.80.0.20:80`.
 4. Ask the LAN administrator for the exact client subnet(s) or source IP allowlist. Enter only the confirmed CIDRs in `allowedClientSubnets`. The observed `/19` adapter mask describes the gateway's LAN; it is not automatically used as an allowlist.
@@ -42,7 +42,7 @@ The jump host is an SSH hop, not a web server. The configured forwards map `10.1
    .\Test-CTFGateway.ps1
    ```
 
-   Verify MAN (`192.168.64.120`) and its proxy jump (`10.32.8.175`) fingerprints with the platform administrator, then seed the dedicated known-hosts file interactively if this is a new sandbox allocation. The supplied account has no interactive shell, so use a loopback-only forward for the prompt:
+   Verify MAN (`192.168.67.21`) and its proxy jump (`10.32.8.175`) fingerprints with the platform administrator, then seed the dedicated known-hosts file interactively if this is a new sandbox allocation. The supplied account has no interactive shell, so use a loopback-only forward for the prompt:
 
    ```powershell
    ssh -F .\runtime\ssh-safe.conf -N -L 127.0.0.1:18080:10.80.0.20:80 man

@@ -6,7 +6,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Gateway.Common.ps1')
-$script:GatewayLogPath = Join-Path $PSScriptRoot 'logs' ('gateway-test-{0}.log' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$logsDir = Join-Path $PSScriptRoot 'logs'
+New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+$script:GatewayLogPath = Join-Path $logsDir ('gateway-test-{0}.log' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 
 try {
     $config = Get-GatewayConfig -Path $ConfigPath

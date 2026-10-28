@@ -1,0 +1,20 @@
+This machine: {{ inventory_hostname }} ({{ lab_hosts[inventory_hostname] }})
+Linux account: user-access (per-team password; password SSH only)
+{% for team in lab_teams %}
+{{ team.id }} identity page: http://{{ team.ip }}/
+{% endfor %}
+
+{% for service in lab_services %}
+Round {{ loop.index }}: {{ service.name }}
+Service ID: {{ service.id }}
+URL: http://{{ lab_hosts[inventory_hostname] }}:{{ service.port }}/
+Health: http://{{ lab_hosts[inventory_hostname] }}:{{ service.port }}/health
+Web login: alice / {{ lab_service_passwords[service.id] }}
+Config: /etc/idor-free-lab/{{ service.id }}.json
+Source: /opt/idor-free-lab/services/{{ service.id }}/portal.py
+Restart: sudo /usr/bin/systemctl restart servicedesk@{{ service.id }}.service
+
+{% endfor %}
+Shared organizer server: {{ lab_network.server_ip }} (attacker access blocked)
+Schedule: {{ lab_rules.max_rounds }} rounds, {{ lab_rules.round_seconds }} seconds/round, {{ lab_rules.tick_seconds }} seconds/tick.
+The ServiceDesk instances have separate databases; vulnerability_count is expected metadata for replacement challenges.

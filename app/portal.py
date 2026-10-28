@@ -1,8 +1,10 @@
-"""ServiceDesk lab: deliberate object authorization flaws, no quiz or flags."""
+"""ServiceDesk lab with deliberate object authorization flaws and real ticket storage."""
 import argparse
+import hashlib
 import hmac
 import json
 import secrets
+import re
 import sqlite3
 import threading
 import time
@@ -41,12 +43,16 @@ class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
             self._worker_slots.release()
 
 
-def create_app(database, password, sandbox_id, enforce_owner=False):
+def create_app(database, password, sandbox_id, enforce_owner=False, service_id=None):
     if not password or not sandbox_id:
         raise ValueError('Lab password and sandbox identity are required')
     database = Path(database)
     database.parent.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(database)) as connection, connection:
+        connection.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, salt TEXT NOT NULL, digest TEXT NOT NULL)')
+        salt = secrets.token_hex(16)
+        digest = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), 200000).hex()
+        connection.execute('INSERT OR REPLACE INTO users VALUES (?, ?, ?)', ('alice', salt, digest))
         connection.execute('CREATE TABLE IF NOT EXISTS tickets (id INTEGER PRIMARY KEY, owner TEXT, title TEXT, status TEXT, private_note TEXT)')
         connection.executemany('INSERT OR IGNORE INTO tickets VALUES (?, ?, ?, ?, ?)', [
             (1201, 'alice', 'Laptop cannot connect to Wi-Fi', 'open', 'Alice workspace: ' + sandbox_id),
@@ -74,7 +80,7 @@ def create_app(database, password, sandbox_id, enforce_owner=False):
         if path == '/' and method == 'GET':
             return respond(200, page, html=True)
         if path == '/health' and method == 'GET':
-            return respond(200, {'status': 'ok', 'sandbox': sandbox_id})
+            return respond(200, {'status': 'ok', 'sandbox': sandbox_id, 'service': service_id, 'capabilities': ['tickets-v2']})
         form = {}
         if method == 'POST':
             try:
@@ -84,25 +90,41 @@ def create_app(database, password, sandbox_id, enforce_owner=False):
                 form = parse_qs(env['wsgi.input'].read(size).decode('utf-8'), max_num_fields=8)
             except (ValueError, UnicodeDecodeError):
                 return respond(400, {'error': 'Invalid request'})
+        if path == '/register' and method == 'POST':
+            username = form.get('username', [''])[0]
+            candidate = form.get('password', [''])[0]
+            if not re.fullmatch(r'[a-z][a-z0-9_]{3,47}', username) or not 12 <= len(candidate) <= 128 or username in ('alice', 'bob'):
+                return respond(400, {'error': 'Use a unique 4-48 character username and a 12-128 character password'})
+            salt = secrets.token_hex(16)
+            digest = hashlib.pbkdf2_hmac('sha256', candidate.encode(), bytes.fromhex(salt), 200000).hex()
+            try:
+                with closing(sqlite3.connect(database)) as connection, connection:
+                    connection.execute('INSERT INTO users VALUES (?, ?, ?)', (username, salt, digest))
+            except sqlite3.IntegrityError:
+                return respond(409, {'error': 'Username exists'})
+            return respond(201, {'user': username})
         if path == '/login' and method == 'POST':
             candidate = form.get('password', [''])[0]
-            if form.get('username') != ['alice'] or not hmac.compare_digest(candidate.encode(), password.encode()):
+            username = form.get('username', [''])[0]
+            with closing(sqlite3.connect(database)) as connection:
+                user = connection.execute('SELECT salt, digest FROM users WHERE username=?', (username,)).fetchone()
+            if len(candidate) > 128 or not user or not hmac.compare_digest(hashlib.pbkdf2_hmac('sha256', candidate.encode(), bytes.fromhex(user[0]), 200000).hex(), user[1]):
                 return respond(401, {'error': 'Invalid login'})
             now = time.time()
             token = secrets.token_urlsafe(32)
             with sessions_lock:
                 for old in list(sessions):
-                    if sessions[old] <= now:
+                    if sessions[old][1] <= now:
                         del sessions[old]
-                sessions[token] = now + 1800
-            return respond(200, {'user': 'alice'}, [('Set-Cookie', f'session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800')])
+                sessions[token] = (username, now + 1800)
+            return respond(200, {'user': username}, [('Set-Cookie', f'session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800')])
         try:
             cookies = SimpleCookie(env.get('HTTP_COOKIE', ''))
             token = cookies['session'].value if 'session' in cookies else ''
         except CookieError:
             token = ''
         with sessions_lock:
-            session_expiry = sessions.get(token, 0)
+            username, session_expiry = sessions.get(token, ('', 0))
         if session_expiry <= time.time():
             return respond(401, {'error': 'Login required'})
         if path == '/logout' and method == 'POST':
@@ -112,8 +134,16 @@ def create_app(database, password, sandbox_id, enforce_owner=False):
         with closing(sqlite3.connect(database)) as connection, connection:
             connection.row_factory = sqlite3.Row
             if path == '/api/tickets' and method == 'GET':
-                rows = connection.execute('SELECT id, owner, title, status FROM tickets WHERE owner = ?', ('alice',))
+                rows = connection.execute('SELECT id, owner, title, status FROM tickets WHERE owner = ? ORDER BY id', (username,))
                 return respond(200, [dict(row) for row in rows])
+            if path == '/api/tickets' and method == 'POST':
+                title = form.get('title', [''])[0]
+                note = form.get('private_note', [''])[0]
+                if not 1 <= len(title) <= 160 or not 1 <= len(note) <= 2000:
+                    return respond(400, {'error': 'Title and private note are required'})
+                cursor = connection.execute('INSERT INTO tickets(owner,title,status,private_note) VALUES (?,?,?,?)', (username, title, 'open', note))
+                ticket = connection.execute('SELECT * FROM tickets WHERE id=?', (cursor.lastrowid,)).fetchone()
+                return respond(201, dict(ticket))
             if not path.startswith('/api/tickets/'):
                 return respond(404, {'error': 'Not found'})
             try:
@@ -124,7 +154,7 @@ def create_app(database, password, sandbox_id, enforce_owner=False):
             if row is None:
                 return respond(404, {'error': 'Ticket not found'})
             # Both read and update intentionally omit owner authorization in lab mode.
-            if enforce_owner and row['owner'] != 'alice':
+            if enforce_owner and row['owner'] != username:
                 return respond(403, {'error': 'Forbidden'})
             if method == 'POST':
                 status = form.get('status', [''])[0]
@@ -140,11 +170,12 @@ def create_app(database, password, sandbox_id, enforce_owner=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=True)
-    parser.add_argument('--port', type=int, default=80)
+    parser.add_argument('--port', type=int)
     parser.add_argument('--host', default='127.0.0.1')
     args = parser.parse_args()
     config = json.loads(Path(args.config).read_text(encoding='utf-8'))
-    with make_server(args.host, args.port, create_app(**config), server_class=ThreadingWSGIServer) as server:
+    configured_port = config.pop('listen_port', 80)
+    with make_server(args.host, args.port if args.port is not None else configured_port, create_app(**config), server_class=ThreadingWSGIServer) as server:
         server.serve_forever()
 
 

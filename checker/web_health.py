@@ -38,6 +38,8 @@ def check_web(target, timeout):
                 result['sandbox'] = health['sandbox']
             if target.get('expected_sandbox') and health.get('sandbox') != target['expected_sandbox']:
                 raise ValueError('Wrong sandbox identity: expected ' + target['expected_sandbox'])
+            if target.get('expected_service') and health.get('service') != target['expected_service']:
+                raise ValueError('Wrong service identity: expected ' + target['expected_service'])
             if target.get('expected_sandbox_suffix'):
                 sandbox = health.get('sandbox')
                 if not isinstance(sandbox, str) or not sandbox.endswith(target['expected_sandbox_suffix']):

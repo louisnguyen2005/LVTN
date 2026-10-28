@@ -44,7 +44,7 @@ def load_targets(config_path, gateway_path):
             raise ValueError('target names and URLs must be nonempty and unique')
         if parsed.scheme != 'http' or parsed.hostname != gateway['gatewayIp'] or parsed.port not in gateway_ports or parsed.path != '/health' or parsed.query or parsed.fragment or parsed.username:
             raise ValueError(f'{name}: health URL must match a configured gateway port')
-        if not isinstance(suffix, str) or not re.fullmatch(r'-attacker[1-9][0-9]*', suffix):
+        if not isinstance(suffix, str) or not re.fullmatch(r'-[a-z][a-z0-9_-]{0,31}', suffix):
             raise ValueError(f'{name}: invalid expected_sandbox_suffix')
         target['expected_sandbox'] = sandbox_id + suffix
         names.add(name)

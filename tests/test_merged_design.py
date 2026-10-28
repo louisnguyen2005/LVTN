@@ -95,6 +95,19 @@ class TeamServiceDeskTests(unittest.TestCase):
         self.assertIn('--host 0.0.0.0 --port 8080', unit)
         self.assertNotIn('CAP_NET_BIND_SERVICE', unit)
 
+    def test_defender_can_patch_own_service_without_running_web_as_root(self):
+        tasks = self.attackers['tasks']
+        sudo = task(tasks, 'fixed unprivileged ServiceDesk restart')['ansible.builtin.copy']
+        self.assertEqual(sudo['content'], 'user-access ALL=(root) NOPASSWD: /usr/bin/systemctl restart servicedesk-team.service')
+        self.assertIn('visudo', sudo['validate'])
+        application = task(tasks, 'Install the team ServiceDesk application')['ansible.builtin.copy']
+        self.assertEqual(application['owner'], 'user-access')
+        self.assertIn('/team/', application['dest'])
+        unit = (ROOT / 'provisioning/files/servicedesk-team.service').read_text(encoding='utf-8')
+        self.assertIn('User=free-lab-web', unit)
+        self.assertIn('NoNewPrivileges=true', unit)
+        self.assertFalse(self.attackers['vars']['user_access_sudo'])
+
     def test_each_vm_gets_a_generated_password_before_any_service_uses_it(self):
         identity = play(self.playbook, 'Record the identity')
         generated = task(identity['tasks'], 'Generate a unique ServiceDesk password')

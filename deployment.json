@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "sandbox_name": "idor-single-sandbox-five-hosts",
+  "network": {"cidr": "10.80.0.0/24", "router_ip": "10.80.0.1", "server_ip": "10.80.0.20"},
+  "images": {"team": "kali", "team_flavor": "standard.kali", "server": "debian-12-x86_64", "server_flavor": "standard.small"},
+  "rules": {"mode": "sla", "round_seconds": 1800, "max_rounds": 2, "tick_seconds": 120, "sla_points": 1},
+  "teams": [
+    {"id": "team01", "node": "attacker1", "ip": "10.80.0.11", "lab_ssh_password": "mekodatactf202001"},
+    {"id": "team02", "node": "attacker2", "ip": "10.80.0.12", "lab_ssh_password": "mekodatactf202002"},
+    {"id": "team03", "node": "attacker3", "ip": "10.80.0.13", "lab_ssh_password": "mekodatactf202003"},
+    {"id": "team04", "node": "attacker4", "ip": "10.80.0.14", "lab_ssh_password": "mekodatactf202004"}
+  ],
+  "services": [
+    {"id": "service01", "name": "ServiceDesk round 1", "port": 8080, "gateway_base_port": 8010, "vulnerability_count": 5, "check": "workflow", "implementation": "servicedesk-demo"},
+    {"id": "service02", "name": "ServiceDesk round 2", "port": 8081, "gateway_base_port": 8020, "vulnerability_count": 5, "check": "workflow", "implementation": "servicedesk-demo"}
+  ]
+}

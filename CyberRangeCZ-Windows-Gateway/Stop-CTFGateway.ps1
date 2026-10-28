@@ -4,7 +4,9 @@ $ErrorActionPreference = 'Stop'
 $runtimeDir = Join-Path $PSScriptRoot 'runtime'
 $statePath = Join-Path $runtimeDir 'gateway-state.json'
 $stopPath = Join-Path $runtimeDir 'stop.request'
-$script:GatewayLogPath = Join-Path $PSScriptRoot 'logs' ('gateway-stop-{0}.log' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$logsDir = Join-Path $PSScriptRoot 'logs'
+New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+$script:GatewayLogPath = Join-Path $logsDir ('gateway-stop-{0}.log' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 
 if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
     Write-GatewayLog 'No managed tunnel state found; no process was stopped.' 'WARN'

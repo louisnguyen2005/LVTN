@@ -1,0 +1,60 @@
+{
+  "services": [
+    {
+      "id": "service01",
+      "name": "ServiceDesk round 1",
+      "vulnerability_count": 5,
+      "check": "workflow",
+      "targets": {
+        "team01": {
+          "url": "http://127.0.0.1:8011/health",
+          "expected_sandbox_suffix": "-attacker1",
+          "expected_service": "service01"
+        },
+        "team02": {
+          "url": "http://127.0.0.1:8012/health",
+          "expected_sandbox_suffix": "-attacker2",
+          "expected_service": "service01"
+        },
+        "team03": {
+          "url": "http://127.0.0.1:8013/health",
+          "expected_sandbox_suffix": "-attacker3",
+          "expected_service": "service01"
+        },
+        "team04": {
+          "url": "http://127.0.0.1:8014/health",
+          "expected_sandbox_suffix": "-attacker4",
+          "expected_service": "service01"
+        }
+      }
+    },
+    {
+      "id": "service02",
+      "name": "ServiceDesk round 2",
+      "vulnerability_count": 5,
+      "check": "workflow",
+      "targets": {
+        "team01": {
+          "url": "http://127.0.0.1:8021/health",
+          "expected_sandbox_suffix": "-attacker1",
+          "expected_service": "service02"
+        },
+        "team02": {
+          "url": "http://127.0.0.1:8022/health",
+          "expected_sandbox_suffix": "-attacker2",
+          "expected_service": "service02"
+        },
+        "team03": {
+          "url": "http://127.0.0.1:8023/health",
+          "expected_sandbox_suffix": "-attacker3",
+          "expected_service": "service02"
+        },
+        "team04": {
+          "url": "http://127.0.0.1:8024/health",
+          "expected_sandbox_suffix": "-attacker4",
+          "expected_service": "service02"
+        }
+      }
+    }
+  ]
+}

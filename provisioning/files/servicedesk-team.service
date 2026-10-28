@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 User=free-lab-web
 Group=free-lab-web
-WorkingDirectory=/opt/idor-free-lab
-ExecStart=/usr/bin/python3 /opt/idor-free-lab/portal.py --config /etc/idor-free-lab/team-config.json --host 0.0.0.0 --port 8080
+WorkingDirectory=/opt/idor-free-lab/team
+ExecStart=/usr/bin/python3 /opt/idor-free-lab/team/portal.py --config /etc/idor-free-lab/team-config.json --host 0.0.0.0 --port 8080
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true

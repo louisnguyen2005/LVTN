@@ -4,3 +4,9 @@ __pycache__/
 .coverage
 checker/results/
 checker/credentials.json
+gameserver/runtime*/
+gameserver/services.json
+gameserver/local.json
+artifacts/
+*.sqlite-wal
+*.sqlite-shm

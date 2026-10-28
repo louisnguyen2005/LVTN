@@ -1,0 +1,73 @@
+{
+  "gatewayIp": "127.0.0.1",
+  "sshConfig": "<USER_SSH_CONFIG>",
+  "sshHost": "man",
+  "allowedClientSubnets": [
+    "127.0.0.1/32"
+  ],
+  "services": [
+    {
+      "name": "Shared organizer ServiceDesk",
+      "protocol": "http",
+      "gatewayPort": 8080,
+      "sandboxIp": "10.80.0.20",
+      "sandboxPort": 80
+    },
+    {
+      "name": "service01 team01",
+      "protocol": "http",
+      "gatewayPort": 8011,
+      "sandboxIp": "10.80.0.11",
+      "sandboxPort": 8080
+    },
+    {
+      "name": "service01 team02",
+      "protocol": "http",
+      "gatewayPort": 8012,
+      "sandboxIp": "10.80.0.12",
+      "sandboxPort": 8080
+    },
+    {
+      "name": "service01 team03",
+      "protocol": "http",
+      "gatewayPort": 8013,
+      "sandboxIp": "10.80.0.13",
+      "sandboxPort": 8080
+    },
+    {
+      "name": "service01 team04",
+      "protocol": "http",
+      "gatewayPort": 8014,
+      "sandboxIp": "10.80.0.14",
+      "sandboxPort": 8080
+    },
+    {
+      "name": "service02 team01",
+      "protocol": "http",
+      "gatewayPort": 8021,
+      "sandboxIp": "10.80.0.11",
+      "sandboxPort": 8081
+    },
+    {
+      "name": "service02 team02",
+      "protocol": "http",
+      "gatewayPort": 8022,
+      "sandboxIp": "10.80.0.12",
+      "sandboxPort": 8081
+    },
+    {
+      "name": "service02 team03",
+      "protocol": "http",
+      "gatewayPort": 8023,
+      "sandboxIp": "10.80.0.13",
+      "sandboxPort": 8081
+    },
+    {
+      "name": "service02 team04",
+      "protocol": "http",
+      "gatewayPort": 8024,
+      "sandboxIp": "10.80.0.14",
+      "sandboxPort": 8081
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+---
+- name: Create this service's separate source and data directories
+  ansible.builtin.file:
+    path: '{{ item.path }}'
+    state: directory
+    owner: '{{ item.owner }}'
+    group: free-lab-web
+    mode: '{{ item.mode }}'
+  loop:
+    - {path: '/opt/idor-free-lab/services/{{ lab_service.id }}', owner: user-access, mode: '0750'}
+    - {path: '/var/lib/idor-free-lab/{{ lab_service.id }}', owner: free-lab-web, mode: '0700'}
+
+- name: Install this service's editable application files
+  ansible.builtin.copy:
+    src: '{{ playbook_dir }}/../app/{{ item }}'
+    dest: '/opt/idor-free-lab/services/{{ lab_service.id }}/{{ item }}'
+    owner: user-access
+    group: free-lab-web
+    mode: '0640'
+  loop: [portal.py, portal.html]
+  register: instance_code
+
+- name: Store this service's independent configuration and identity
+  ansible.builtin.copy:
+    dest: '/etc/idor-free-lab/{{ lab_service.id }}.json'
+    owner: user-access
+    group: free-lab-web
+    mode: '0640'
+    content: >-
+      {{ dict(database='/var/lib/idor-free-lab/' ~ lab_service.id ~ '/tickets.sqlite',
+      password=lab_service_passwords[lab_service.id],
+      sandbox_id=global_sandbox_id ~ '-' ~ inventory_hostname,
+      service_id=lab_service.id, listen_port=lab_service.port,
+      enforce_owner=lab_enforce_owner | bool) | to_nice_json }}
+  no_log: true
+  register: instance_config
+
+- name: Start or restart only this service instance
+  ansible.builtin.systemd_service:
+    name: 'servicedesk@{{ lab_service.id }}'
+    daemon_reload: true
+    enabled: true
+    state: "{{ 'restarted' if instance_config.changed or instance_code.changed or team_service_unit.changed else 'started' }}"
+
+- name: Verify this service's health endpoint
+  ansible.builtin.uri:
+    url: 'http://127.0.0.1:{{ lab_service.port }}/health'
+    use_proxy: false
+    return_content: true
+  register: instance_health
+  until: instance_health.status | default(0) == 200
+  retries: 10
+  delay: 3
+
+- name: Require the correct sandbox and service identity
+  ansible.builtin.assert:
+    that:
+      - instance_health.json.sandbox == global_sandbox_id ~ '-' ~ inventory_hostname
+      - instance_health.json.service == lab_service.id
