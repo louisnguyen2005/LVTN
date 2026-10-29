@@ -56,6 +56,28 @@ The central database is **SQLite in WAL mode**, created automatically on the Win
 
 `gameserver/local.json` selects the active event; scripts resolve paths and backend ports from it. A running event's rules/allocation are frozen. Configure a new event after changing the allocation or schedule. Online backup uses `py -3 -m gameserver.control backup --destination <NEW_ABSOLUTE_FILE>`; finish uses `py -3 -m gameserver.control finish`.
 
-Full Vietnamese instructions: [deployment and handover](docs/DEPLOYMENT.vi.md), [tick checker, flags and monitoring](gameserver/README.vi.md). The public scoreboard is `/`; the token-protected operations monitor is `/monitor`. Team tokens live in the private runtime folder and must be delivered to teams separately. `checker/auto_check.py` remains a separate legacy diagnostic checker and does not award competition points.
 
-The GitHub workflow checks source/tests and Ansible syntax on Linux after the source is pushed. Creating VMs, checking cloud image/flavor availability and confirming live service reachability still happen in CyberRangeCZ.
+
+
+
+
+
+
+
+
+ĐĂNG NHẬP SSH bằng mật khẩu và cấm key nằm trong [provisioning/playbook.yml (line 213)](D:/TAILIEU/LVTN/LVTN-merged-auto-checker/LVTN-shop-attack-defense-20261028/provisioning/playbook.yml:213). Ansible ghi cấu hình này vào /etc/ssh/sshd_config.d/00-idor-lab.conf trên các VM đội:
+Match User user-access
+    PasswordAuthentication yes
+    PubkeyAuthentication no
+    AuthenticationMethods password
+Ngay sau đó, playbook còn xóa /home/user-access/.ssh/authorized_keys ở [dòng 235 (line 235)](D:/TAILIEU/LVTN/LVTN-merged-auto-checker/LVTN-shop-attack-defense-20261028/provisioning/playbook.yml:235).
+Cấu hình này áp dụng cho tài khoản user-access trên VM đội. File [gameserver/configure.py (line 103)](D:/TAILIEU/LVTN/LVTN-merged-auto-checker/LVTN-shop-attack-defense-20261028/gameserver/configure.py:103) chỉ tạo SSH config phía Windows; nó không phải nơi thực thi lệnh cấm key trên VM. Chặng man của CyberRangeCZ vẫn dùng SSH key.
+SSH bằng mật khẩu vào VM team04 như sau:
+Mở PowerShell và kiểm tra file cấu hình đã được tạo:
+Test-Path "$env:USERPROFILE\.ssh\ctf-67d0b208-6333-44c2-aaeb-89e5bbb51e5e-teams-config"
+Kết quả cần là True.
+Kết nối:
+ssh -F "$env:USERPROFILE\.ssh\ctf-67d0b208-6333-44c2-aaeb-89e5bbb51e5e-teams-config" team04
+
+
+
